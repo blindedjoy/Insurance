@@ -189,56 +189,25 @@ class OONScenarioConfig:
 
 Use ChatGPT 5.2 for current/factual questions. Bring findings back here.
 
-### R1: OON Coverage Rules by Plan Type
+**Full prompts**: See `docs/research/RESEARCH_PROMPTS.md`
 
-**Prompt template**:
-```
-I'm analyzing Covered California 2026 plans for SF.
-For each plan type (HMO, PPO, EPO), what are the actual
-out-of-network coverage rules?
+### Priority Research (Medical Tail Risk)
 
-Specifically:
-1. Emergency care - is it always covered at in-network rates?
-2. Post-stabilization care - when does emergency coverage end?
-3. What does "balance billing protection" actually cover?
-4. Are there any OON benefits on exchange PPO plans?
-```
+| Task | Topic | Critical For |
+|------|-------|--------------|
+| **R1** | Network type coverage rules (HMO/PPO/EPO) | P2b |
+| **R2** | Kaiser network + travel risk | Kaiser vs PPO decision |
+| **R3** | Gold vs Platinum comparison | Premium vs OOP trade-off |
+| **R4** | Post-stabilization cost estimates | $30k assumption validation |
 
-### R2: Kaiser Network Outside California
+### Optional Research (Lower Priority)
 
-**Prompt template**:
-```
-If I have Kaiser Permanente Gold HMO from Covered California
-and I'm injured while skiing in Colorado:
+| Task | Topic | Why Optional |
+|------|-------|--------------|
+| R5 | Dental plan details | No catastrophic tail risk |
+| R6 | Vision plan details | No catastrophic tail risk |
 
-1. Does Kaiser have any coverage outside California?
-2. What happens after ER stabilization?
-3. Can I get follow-up care at Kaiser facilities in Colorado?
-4. What's my realistic OON exposure?
-```
-
-### R3: Post-Stabilization Definition
-
-**Prompt template**:
-```
-Under the No Surprises Act:
-1. What exactly is "post-stabilization" care?
-2. When does emergency coverage end?
-3. Who decides when a patient is "stabilized"?
-4. What's the typical timeline for stabilization?
-```
-
-### R4: Typical OON Costs
-
-**Prompt template**:
-```
-For someone injured out-of-network who needs:
-- Physical therapy (12 sessions)
-- Follow-up orthopedic surgery
-- 2 weeks inpatient rehab
-
-What's the realistic cost range if insurance doesn't cover it?
-```
+**Rationale**: Dental/vision have capped annual maximums. No "Colorado catastrophe" equivalent. Can research later if needed for completeness.
 
 ---
 

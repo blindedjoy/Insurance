@@ -1,0 +1,71 @@
+RESEARCH PROMPT A: OON Coverage Rules + Cost Estimates
+
+Context: I'm building a financial model to compare Covered California 2026 health insurance plans for a San Francisco couple. Using Spitznagel's geometric mean approach - which heavily penalizes worst-case outcomes ("tail risk").
+
+=== WHAT I ALREADY KNOW ===
+- Kaiser Gold HMO and Blue Shield Trio HMO are top value options
+- OOP max is ~$8,700 for Gold HMOs, ~$17,400 for Gold PPO (couple)
+- OON coverage is "basically emergency/urgent only" on exchange plans
+- No Surprises Act protects emergency care at in-network rates
+- Post-stabilization OON care "can get hammered" — but need specifics
+
+=== GAPS I NEED FILLED ===
+I need to understand both the RULES and the COSTS for out-of-network care.
+
+=== PART 1: NETWORK TYPE COVERAGE RULES ===
+
+For each plan type (HMO, PPO, EPO) on Covered California:
+
+1. EMERGENCY CARE
+   - Is emergency OON care covered at in-network rates per the No Surprises Act?
+   - Are there ANY situations where I'd pay more for OON emergency care?
+
+2. POST-STABILIZATION CARE
+   - What exactly is "post-stabilization" care?
+   - When does emergency coverage legally end?
+   - If I'm stabilized in an OON hospital, who pays for:
+     * Continued hospitalization?
+     * Surgery scheduled for the next day?
+     * Physical therapy before discharge?
+   - Does this differ by plan type (HMO vs PPO vs EPO)?
+
+3. NON-EMERGENCY OON CARE
+   - Do ANY Covered California PPO plans cover elective OON care?
+   - What's the typical OON deductible/OOP max on exchange PPOs?
+   - Is EPO essentially "HMO without referrals" for OON purposes?
+
+4. BALANCE BILLING PROTECTION
+   - What does California's balance billing law actually protect?
+   - Are there gaps where I could still get surprise bills?
+
+=== PART 2: REALISTIC COST ESTIMATES ===
+
+Scenario: A healthy 35-year-old breaks their leg badly while skiing in Colorado (out-of-network for their California HMO/EPO plan).
+
+Emergency room visit and initial stabilization is covered. What happens after?
+
+Assuming NO insurance coverage for post-stabilization:
+
+5. TYPICAL COSTS FOR:
+   - Orthopedic surgery for a complex leg fracture (ORIF)?
+   - 3-5 day hospital stay after surgery?
+   - 2 weeks inpatient rehab?
+   - 12 sessions outpatient physical therapy?
+   - Follow-up imaging (X-rays, MRI)?
+
+6. REALISTIC TOTAL SCENARIOS
+   - Best case: Simple fracture, quick recovery - total cost?
+   - Expected case: Surgery + short rehab - total cost?
+   - Worst case: Complications, extended care - total cost?
+
+7. NEGOTIATION REALITY
+   - If paying out-of-pocket, can you negotiate down from "list price"?
+   - What's realistic to actually pay?
+
+I'm currently using $30,000 as my "post-stabilization exposure" parameter. Is this realistic, too high, or too low?
+
+=== WHAT I NEED FOR MY MODEL ===
+
+- Clear rules: What's covered vs not covered by plan type
+- Dollar estimates: What's realistic OON exposure in Colorado scenario
+- Any gotchas or edge cases I should model

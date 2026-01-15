@@ -1,0 +1,76 @@
+RESEARCH PROMPT B: Kaiser vs PPO + Gold vs Platinum Comparison
+
+Context: I'm building a financial model to compare Covered California 2026 health insurance plans for a San Francisco couple. Using Spitznagel's geometric mean approach - which heavily penalizes worst-case outcomes ("tail risk").
+
+=== WHAT I ALREADY KNOW ===
+- Kaiser Gold HMO: ~$18k/year premium, $8.7k OOP max, closed network
+- Blue Shield Trio Gold HMO: ~$21k/year, $8.7k OOP max, UCSF + Dignity
+- Blue Shield Gold PPO: Higher premium, $17.4k OOP max, broad network
+- Kaiser wins on pure numbers — but network is Kaiser-only
+- Trade-off: PPO gives flexibility but higher OOP max hurts tail risk
+
+=== GAPS I NEED FILLED ===
+My current model shows Kaiser Gold HMO winning (lowest premium + low OOP max). But I'm concerned about Kaiser's network limitations — specifically the "Colorado skiing accident" scenario.
+
+=== PART 1: KAISER TRAVEL RISK ===
+
+The "Colorado skiing accident" scenario - what happens with Kaiser if I need care outside California?
+
+1. KAISER'S NATIONAL PRESENCE
+   - Does Kaiser have facilities in Colorado? Other states?
+   - If I'm injured in a state WITH Kaiser, can I use those facilities?
+   - What's the process for getting Kaiser care while traveling?
+
+2. EMERGENCY AWAY FROM HOME
+   - If I go to a non-Kaiser ER in Colorado, is that covered?
+   - At what point does "emergency" coverage end?
+   - What happens if I need surgery the day after the ER visit?
+
+3. POST-EMERGENCY SCENARIO
+   - I break my leg skiing, go to Vail ER, get stabilized
+   - Can I get follow-up surgery at Kaiser?
+   - Do I have to fly back to California for non-emergency care?
+   - What if I can't be moved for 2 weeks?
+
+4. REALISTIC WORST CASE FOR KAISER
+   - What's the realistic OON exposure for a Kaiser member with a serious injury in Colorado?
+   - Are there any Kaiser-specific protections or programs for this?
+   - Is Kaiser's travel risk worse than, same as, or better than other HMOs?
+
+=== PART 2: GOLD VS PLATINUM COMPARISON ===
+
+For Covered California 2026 in San Francisco:
+
+5. ACTUAL PREMIUM DIFFERENCE
+   - For a couple (both age 35), what's the monthly premium difference between:
+     * Blue Shield Gold 80 PPO vs Platinum 90 PPO?
+     * Kaiser Gold HMO vs Platinum HMO?
+   - Annual premium difference?
+
+6. OOP MAX COMPARISON
+   - What's the exact in-network OOP max for Gold vs Platinum plans?
+   - Are the OOP max numbers standardized across carriers at each tier?
+   - Is there an OON OOP max on the PPO plans?
+
+7. OTHER COST-SHARING
+   - Deductible differences (Gold vs Platinum)?
+   - Copay/coinsurance differences for common services?
+   - Any services that cost significantly more on Gold?
+
+8. BREAK-EVEN ANALYSIS
+   - At what level of healthcare usage does Platinum become cheaper than Gold?
+   - For a healthy couple, is Gold or Platinum likely to cost less total?
+
+9. NETWORK DIFFERENCES
+   - Is the network the same for Gold vs Platinum within the same carrier?
+   - Any coverage differences besides cost-sharing?
+
+=== WHAT I NEED FOR MY MODEL ===
+
+For Kaiser risk:
+- Quantified OON exposure estimate for Colorado scenario
+- Whether Kaiser is significantly worse than PPO for travel
+
+For Gold vs Platinum:
+- Exact premium and OOP max numbers
+- Whether Platinum's lower OOP max justifies higher premium (for tail risk protection)
