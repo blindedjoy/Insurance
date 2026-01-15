@@ -1,8 +1,8 @@
 # 🏥 Insurance Analysis Workspace State
 
 > **Last Updated**: 2026-01-15
-> **Current Branch**: `main`
-> **Next Task**: P1 — Plan data models + geometric mean calculation
+> **Current Branch**: `P1.1-wealth-ratio-refactor`
+> **Next Task**: P2 — Load real Covered California plan data
 
 ---
 
@@ -17,7 +17,7 @@ Analyze Covered California Gold vs Platinum plans using Spitznagel's geometric m
 | Scenario engine | ✅ Complete | `src/insurance/scenarios.py` |
 | Gold vs Platinum comparison | ✅ Complete | `src/insurance/compare.py` |
 | Dental/Vision add-ons | ✅ Included | `src/insurance/plans.py` |
-| **Tests** | ✅ **61 passing** | `tests/` |
+| **Tests** | ✅ **82 passing** | `tests/` |
 
 ---
 
@@ -63,6 +63,7 @@ This is why **tail risk protection** matters more than premium optimization.
 | P1b | Scenario definitions | ✅ |
 | P1c | Geometric mean calculation | ✅ |
 | P1d | Plan comparison function | ✅ |
+| P1.1 | Wealth ratio refactor (Spitznagel 0-1 scale) | ✅ |
 | P2 | Load real Covered California plan data | ⏳ |
 | P3 | Visualization (scenario outcomes) | ⏳ |
 
