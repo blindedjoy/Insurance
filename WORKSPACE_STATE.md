@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-01-15
 > **Current Branch**: `integrate-research-findings`
-> **Status**: ✅ Research complete, integrating findings
+> **Status**: ✅ **ANALYSIS COMPLETE** - Kaiser Platinum HMO wins!
 
 ---
 
@@ -16,9 +16,10 @@ Analyze Covered California Gold vs Platinum plans using Spitznagel's geometric m
 | Geometric mean calc | ✅ Complete | `src/insurance/geometric_mean.py` |
 | Scenario engine | ✅ Complete | `src/insurance/scenarios.py` |
 | NetworkType enum | ✅ Complete | `src/insurance/plans.py` |
-| **Research: Prompt A** | ✅ **COMPLETE** | `docs/research/prompt a responses/` |
-| **Research: Prompt B** | ✅ **COMPLETE** | `docs/research/prompt b responses/` |
-| **Tests** | ✅ **93 passing** | `tests/` |
+| **Research: Prompt A** | ✅ Complete | `docs/research/prompt a responses/` |
+| **Research: Prompt B** | ✅ Complete | `docs/research/prompt b responses/` |
+| **Demo (real data)** | ✅ **Complete** | `demo.py` |
+| **Tests** | ✅ **94 passing** | `tests/` |
 
 ---
 
@@ -126,6 +127,32 @@ This is why tail risk protection matters more than expected value.
 
 ---
 
+## 📊 GEOMETRIC MEAN RESULTS (Real 2026 Data)
+
+**Winner: Kaiser Platinum HMO** 🏆
+
+| Rank | Plan | Premium | OOP Max | GM Wealth | GM Ratio |
+|------|------|---------|---------|-----------|----------|
+| 🥇 1 | **Kaiser Platinum HMO** | $20,924 | $10,000 | **$51,041** | 64.3% |
+| 🥈 2 | Blue Shield Trio Platinum HMO | $22,772 | $10,000 | $49,033 | 58.5% |
+| 🥉 3 | Kaiser Gold HMO | $19,556 | $18,400 | $46,202 | 59.9% |
+| 4 | Blue Shield Trio Gold HMO | $19,700 | $18,400 | $46,036 | 59.6% |
+| 5 | Blue Shield Gold 80 PPO | $28,268 | $18,400 | $35,565 | 52.3% |
+| 6 | Blue Shield Platinum 90 PPO | $38,036 | $10,000 | $31,217 | 46.8% |
+
+### Gold vs Platinum Analysis
+
+| Metric | Kaiser Gold | Kaiser Platinum | Delta |
+|--------|-------------|-----------------|-------|
+| Premium (w/ dental+vision) | $19,556 | $20,924 | +$1,368 |
+| OOP Max | $18,400 | $10,000 | **-$8,400** |
+| GM Ratio | 59.85% | 64.28% | **+4.44pp** |
+| GM Wealth | $52,664 | $56,570 | **+$3,906** |
+
+**Key Insight**: Platinum wins by +4.44 percentage points on GM ratio.
+
+---
+
 ## 📋 Task Backlog
 
 ### ✅ Complete
@@ -137,15 +164,16 @@ This is why tail risk protection matters more than expected value.
 | P2b | NetworkType enum (HMO/PPO/EPO) + OON fields |
 | **R1-R4** | Research Prompt A (OON rules, costs) |
 | **R5-R8** | Research Prompt B (Kaiser travel, Gold vs Platinum) |
+| **P3** | ✅ Update demo with real 2026 numbers |
+| **P4** | ✅ Run comparison with real data |
 
 ### 🔄 Next Steps
 
 | Task | Description | Priority |
 |------|-------------|----------|
-| **P3** | Update fixtures with real 2026 numbers | High |
-| **P4** | Run comparison with real data | High |
 | **P5** | Add supplemental travel insurance to model? | Medium |
 | **P6** | Visualization (scenario waterfall) | Low |
+| **P7** | Sensitivity analysis (vary probabilities) | Low |
 
 ---
 
