@@ -13,7 +13,9 @@ from src.insurance.scenarios import Scenario, build_scenarios_for_plan
 from src.insurance.geometric_mean import (
     compute_expected_log_wealth,
     compute_geometric_mean_wealth,
-    compute_scenario_wealth,
+    compute_wealth_ratio,
+    compute_disposable_income,
+    build_scenario_outcomes,
 )
 
 
@@ -30,7 +32,8 @@ class PlanComparisonResult:
         in_network_oop_max: Maximum in-network out-of-pocket
         expected_log_wealth: E[log(W/W₀)] - the optimization target
         geometric_mean: GM wealth in dollars
-        scenario_wealth: Per-scenario wealth breakdown
+        scenario_wealth: Per-scenario wealth breakdown (in dollars)
+        scenario_ratios: Per-scenario wealth ratios (0-1 scale)
     """
     
     plan_name: str
@@ -40,6 +43,7 @@ class PlanComparisonResult:
     expected_log_wealth: float
     geometric_mean: float
     scenario_wealth: Dict[str, float] = field(default_factory=dict)
+    scenario_ratios: Dict[str, float] = field(default_factory=dict)
 
 
 def compare_plans(
@@ -49,16 +53,18 @@ def compare_plans(
     dental: Optional[DentalPlan] = None,
     vision: Optional[VisionPlan] = None,
     scenarios: Optional[List[Scenario]] = None,
+    tax_rate: Optional[float] = None,
 ) -> List[PlanComparisonResult]:
     """Compare multiple plans and rank by geometric mean.
     
     Args:
         plans: List of medical plans to compare
-        annual_income: Gross annual income
+        annual_income: Gross annual income (or after-tax if tax_rate=None)
         annual_baseline_spend: Fixed non-health spending
         dental: Optional dental add-on (applied to all plans)
         vision: Optional vision add-on (applied to all plans)
         scenarios: Custom scenarios (if None, builds from each plan)
+        tax_rate: Optional tax rate (if provided, annual_income is gross)
         
     Returns:
         List of PlanComparisonResult sorted by geometric mean (best first)
@@ -66,33 +72,46 @@ def compare_plans(
     Example:
         >>> results = compare_plans(
         ...     plans=[gold_ppo, platinum_ppo, kaiser_hmo],
-        ...     annual_income=240_000,
-        ...     annual_baseline_spend=120_000,
+        ...     annual_income=180_000,  # after-tax
+        ...     annual_baseline_spend=80_000,
         ... )
         >>> for r in results:
         ...     print(f"{r.plan_name}: GM=${r.geometric_mean:,.0f}")
     """
     results = []
     
+    # Compute disposable income once
+    if tax_rate is not None:
+        disposable = compute_disposable_income(
+            gross_income=annual_income,
+            tax_rate=tax_rate,
+            baseline_spend=annual_baseline_spend,
+        )
+        after_tax = annual_income * (1 - tax_rate)
+    else:
+        # Assume annual_income is already after-tax
+        disposable = annual_income - annual_baseline_spend
+        after_tax = annual_income
+    
     for plan in plans:
         # Build scenarios for this plan (or use custom)
         plan_scenarios = scenarios if scenarios else build_scenarios_for_plan(plan)
         
-        # Compute metrics
+        # Compute metrics using new API
         expected_log = compute_expected_log_wealth(
-            annual_income=annual_income,
-            annual_baseline_spend=annual_baseline_spend,
             plan=plan,
             scenarios=plan_scenarios,
+            baseline_spend=annual_baseline_spend,
+            after_tax_income=after_tax,
             dental=dental,
             vision=vision,
         )
         
         gm = compute_geometric_mean_wealth(
-            annual_income=annual_income,
-            annual_baseline_spend=annual_baseline_spend,
             plan=plan,
             scenarios=plan_scenarios,
+            baseline_spend=annual_baseline_spend,
+            after_tax_income=after_tax,
             dental=dental,
             vision=vision,
         )
@@ -107,16 +126,23 @@ def compare_plans(
         if vision:
             addon_oop += vision.expected_oop
         
-        # Per-scenario wealth breakdown
+        # Per-scenario wealth breakdown (dollars AND ratios)
         scenario_wealth = {}
+        scenario_ratios = {}
         for s in plan_scenarios:
-            wealth = compute_scenario_wealth(
-                annual_income=annual_income,
-                annual_baseline_spend=annual_baseline_spend,
-                total_premium=total_premium,
-                scenario_oop=s.total_oop + addon_oop,
-            )
+            total_oop = s.total_oop + addon_oop
+            
+            # Dollar wealth
+            wealth = disposable - total_premium - total_oop
             scenario_wealth[s.name] = wealth
+            
+            # Ratio (0-1)
+            ratio = compute_wealth_ratio(
+                disposable_income=disposable,
+                total_premium=total_premium,
+                scenario_oop=total_oop,
+            )
+            scenario_ratios[s.name] = ratio
         
         results.append(PlanComparisonResult(
             plan_name=plan.name,
@@ -126,6 +152,7 @@ def compare_plans(
             expected_log_wealth=expected_log,
             geometric_mean=gm,
             scenario_wealth=scenario_wealth,
+            scenario_ratios=scenario_ratios,
         ))
     
     # Sort by geometric mean (best first)
@@ -175,11 +202,13 @@ def format_scenario_breakdown(result: PlanComparisonResult) -> str:
     lines = [
         f"### {result.plan_name} - Scenario Breakdown",
         "",
-        "| Scenario | Remaining Wealth |",
-        "|----------|------------------|",
+        "| Scenario | Wealth | Ratio |",
+        "|----------|--------|-------|",
     ]
     
-    for name, wealth in result.scenario_wealth.items():
-        lines.append(f"| {name} | ${wealth:,.0f} |")
+    for name in result.scenario_wealth:
+        wealth = result.scenario_wealth[name]
+        ratio = result.scenario_ratios.get(name, 0)
+        lines.append(f"| {name} | ${wealth:,.0f} | {ratio:.1%} |")
     
     return "\n".join(lines)
