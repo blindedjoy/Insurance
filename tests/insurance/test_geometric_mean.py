@@ -155,21 +155,66 @@ class TestGeometricMeanWealth:
 
 
 class TestPlatinumVsGoldGM:
-    """Test the key comparison: does Platinum improve GM over Gold?"""
+    """Test the key comparison: does Platinum improve GM over Gold?
+    
+    Research finding (2026): PPO Platinum premium is so high ($36,936 vs $27,168)
+    that it's NOT better than Gold PPO even in catastrophe. But Kaiser Platinum
+    IS better than Kaiser Gold (only $1,368 premium delta vs $8,400 OOP savings).
+    """
 
-    def test_platinum_better_in_catastrophic_scenario(
+    def test_kaiser_platinum_better_in_catastrophic_scenario(
+        self, 
+        kaiser_gold_hmo, 
+        kaiser_platinum_hmo, 
+        typical_couple_income, 
+        typical_baseline_spend
+    ):
+        """Kaiser Platinum preserves more wealth in catastrophic scenarios.
+        
+        Kaiser premium delta: $1,368 ($19,824 - $18,456)
+        Kaiser OOP delta: $8,400 ($18,400 - $10,000)
+        Net savings in catastrophe: $7,032
+        """
+        from src.insurance.geometric_mean import compute_wealth_ratio
+        
+        disposable = typical_couple_income - typical_baseline_spend
+        
+        # Catastrophic scenario - hit OOP max
+        gold_ratio = compute_wealth_ratio(
+            disposable_income=disposable,
+            total_premium=kaiser_gold_hmo.annual_premium,
+            scenario_oop=kaiser_gold_hmo.in_network_oop_max,
+        )
+        
+        plat_ratio = compute_wealth_ratio(
+            disposable_income=disposable,
+            total_premium=kaiser_platinum_hmo.annual_premium,
+            scenario_oop=kaiser_platinum_hmo.in_network_oop_max,
+        )
+        
+        # Kaiser Platinum: $1,368 more premium, $8,400 less OOP max
+        # Net effect: platinum preserves $7,032 more wealth in catastrophe
+        assert plat_ratio > gold_ratio
+    
+    def test_ppo_platinum_not_better_in_catastrophic_scenario(
         self, 
         gold_ppo_plan, 
         platinum_ppo_plan, 
         typical_couple_income, 
         typical_baseline_spend
     ):
-        """Platinum should preserve more wealth in catastrophic scenarios."""
+        """PPO Platinum does NOT preserve more wealth - premium too high!
+        
+        PPO premium delta: $9,768 ($36,936 - $27,168)
+        PPO OOP delta: $8,400 ($18,400 - $10,000)
+        Net LOSS in catastrophe: $1,368
+        
+        Research finding: Both ChatGPT and Opus said PPO Platinum hard to justify.
+        """
         from src.insurance.geometric_mean import compute_wealth_ratio
         
         disposable = typical_couple_income - typical_baseline_spend
         
-        # Catastrophic scenario - hit OOP max
         gold_ratio = compute_wealth_ratio(
             disposable_income=disposable,
             total_premium=gold_ppo_plan.annual_premium,
@@ -182,9 +227,9 @@ class TestPlatinumVsGoldGM:
             scenario_oop=platinum_ppo_plan.in_network_oop_max,
         )
         
-        # Platinum has higher premium but lower OOP max
-        # Net effect: platinum should preserve more wealth in catastrophe
-        assert plat_ratio > gold_ratio
+        # PPO Platinum: $9,768 more premium, only $8,400 less OOP max
+        # Net effect: Gold PPO is actually BETTER even in catastrophe!
+        assert gold_ratio > plat_ratio
 
     def test_gold_better_in_no_use_scenario(
         self, 

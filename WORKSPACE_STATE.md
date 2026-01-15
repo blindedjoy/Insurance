@@ -1,8 +1,8 @@
 # 🏥 Insurance Analysis Workspace State
 
 > **Last Updated**: 2026-01-15
-> **Current Branch**: `research-prompts`
-> **Next Task**: P2b — Network type modeling (research complete!)
+> **Current Branch**: `integrate-research-findings`
+> **Status**: ✅ Research complete, integrating findings
 
 ---
 
@@ -15,53 +15,87 @@ Analyze Covered California Gold vs Platinum plans using Spitznagel's geometric m
 | Plan data models | ✅ Complete | `src/insurance/plans.py` |
 | Geometric mean calc | ✅ Complete | `src/insurance/geometric_mean.py` |
 | Scenario engine | ✅ Complete | `src/insurance/scenarios.py` |
-| Gold vs Platinum comparison | ✅ Complete | `src/insurance/compare.py` |
-| Dental/Vision add-ons | ✅ Included | `src/insurance/plans.py` |
-| **Research: OON rules + costs** | ✅ **COMPLETE** | `docs/research/prompt a responses/` |
-| **Network type modeling** | ⏳ P2b | — |
-| **Tests** | ✅ **82 passing** | `tests/` |
+| NetworkType enum | ✅ Complete | `src/insurance/plans.py` |
+| **Research: Prompt A** | ✅ **COMPLETE** | `docs/research/prompt a responses/` |
+| **Research: Prompt B** | ✅ **COMPLETE** | `docs/research/prompt b responses/` |
+| **Tests** | ✅ **93 passing** | `tests/` |
 
 ---
 
-## ✅ Research Findings (Prompt A Complete)
+## ✅ Research Complete: Final Model Parameters
 
-### Q1: OON Coverage Rules by Plan Type — ANSWERED
+### 2026 Premium Numbers (SF couple, age 35, no subsidies)
 
-| Situation | HMO | PPO | EPO | Source |
-|-----------|-----|-----|-----|--------|
-| **Emergency OON** | ✅ In-network rates | ✅ In-network rates | ✅ In-network rates | No Surprises Act |
-| **Air ambulance** | ✅ Protected ($250 copay) | ✅ Protected | ✅ Protected | No Surprises Act |
-| **Ground ambulance** | ⚠️ **NOT protected** | ⚠️ **NOT protected** | ⚠️ **NOT protected** | Federal gap |
-| **Post-stabilization (no waiver)** | ✅ Covered | ✅ Covered | ✅ Covered | Until safe to transfer |
-| **Post-stabilization (waiver signed)** | ❌ $0 coverage | ⚠️ 50% after $5.5k ded | ❌ $0 coverage | Patient choice |
-| **Elective OON** | ❌ Never | ⚠️ Limited | ❌ Never | Plan rules |
-| **OON OOP max** | N/A | **$25k ind / $50k couple** | N/A | PPO only |
+| Plan | Annual Premium | Monthly |
+|------|----------------|---------|
+| **Kaiser Gold HMO** | **$18,456** | $1,538 |
+| Kaiser Platinum HMO | $19,824 | $1,652 |
+| Blue Shield Trio Gold | $18,600 | $1,550 |
+| Blue Shield Trio Platinum | $21,672 | $1,806 |
+| Blue Shield Gold PPO | $27,168 | $2,264 |
+| Blue Shield Platinum PPO | $36,936 | $3,078 |
 
-**Key insight**: The **consent waiver** is the critical decision point. CMS estimates **50% of patients sign waivers**, exposing themselves to full OON charges.
+### Standardized Cost-Sharing (ALL carriers identical per CA law)
 
-### Q2: Network Adequacy — PARTIALLY ANSWERED
+| Metric | Gold | Platinum | Delta |
+|--------|------|----------|-------|
+| **Individual OOP max** | $9,200 | $5,000 | $4,200 |
+| **Couple OOP max** | $18,400 | $10,000 | **$8,400** |
+| Medical deductible | $0 | $0 | — |
+| Primary care copay | $40 | $15 | $25 |
+| Specialist copay | $70 | $30 | $40 |
+| ER facility fee | $350 | $175 | $175 |
+| Hospital admission | $375/day × 5 | $225/day × 5 | $750 max |
 
-| Plan | Network | Key Hospitals | Travel Risk |
-|------|---------|---------------|-------------|
-| Kaiser Gold HMO | Kaiser only | Kaiser SF | **High** (Kaiser-only nationwide) |
-| Blue Shield Trio HMO | UCSF + Dignity | UCSF, St. Mary's | Medium |
-| Blue Shield PPO | Broad | Most SF hospitals | Lower (OON coverage exists) |
-| Anthem EPO | Broad | TBD | Medium |
+### OON Coverage (PPO only)
 
-**Prompt B** will provide more detail on Kaiser travel risk.
+| Metric | Value |
+|--------|-------|
+| OON Deductible | $5,500 individual |
+| OON Coinsurance | 50% after deductible |
+| OON OOP Max | $25,000 individual / $50,000 couple |
 
-### Q3: Post-Stabilization Exposure — ANSWERED
+---
 
-**$30k assumption is reasonable but should be tiered for geometric mean analysis.**
+## 🔬 Key Research Findings
 
-| Scenario | Probability | Exposure | Model Parameter |
-|----------|-------------|----------|-----------------|
-| Best case (simple fracture, quick discharge) | 30% | $1k-$5k | **$3,000** |
-| Expected case (surgery, transfer arranged) | 50% | $8k-$20k | **$15,000** |
-| Moderate worst (surgery, stays at OON hospital) | 18% | $25k-$50k | **$35,000** |
-| Catastrophic (complications, extended stay) | 2% | $50k-$150k | **$75,000** |
+### Kaiser Travel Risk: MIXED CONCLUSIONS
 
-**Additional exposure**: Ground ambulance ($500-$2,000) — not protected by federal law.
+| Source | Finding |
+|--------|---------|
+| **Opus** | Kaiser has **1,100+ physicians in Colorado** + Visiting Member Program. Kaiser is **BETTER** than Blue Shield HMOs for ski travel risk. |
+| **ChatGPT** | Kaiser has authorization hassles, documented lawsuits (Providence, MemorialCare), horror stories. Blue Shield Trio has **BlueCard** national network advantage. |
+
+**Consensus**: All HMOs equal for emergency (No Surprises Act). Difference is post-stabilization.
+
+### Post-Stabilization Exposure (Colorado Ski Scenario)
+
+| Scenario | Probability | Exposure |
+|----------|-------------|----------|
+| Best case (simple fracture) | 30% | **$3,000** |
+| Expected case (surgery, transfer) | 50% | **$15,000** |
+| Moderate worst (stays at OON) | 18% | **$35,000** |
+| Catastrophic (complications) | 2% | **$75,000** |
+
+**Additional**: Ground ambulance $500-$2,000 (not protected by federal law)
+
+### Break-Even Analysis
+
+| Scenario | Gold Total | Platinum Total | Winner |
+|----------|------------|----------------|--------|
+| Healthy year (~$400 spend) | $18,856 | $20,024 | **Gold (+$1,168)** |
+| Moderate year (~$5k spend) | $22,000 | $22,500 | **Gold** |
+| Catastrophic (both hit OOP) | $36,856 | $29,824 | **Platinum (+$7,032)** |
+
+**Break-even point**: ~$3,400-$4,000 in healthcare spending
+
+### Final Recommendations
+
+| Source | Recommendation | Rationale |
+|--------|----------------|-----------|
+| **Opus** | **Kaiser Gold + travel insurance** | Best geometric mean. Premium savings fund 3-4 years of travel insurance. |
+| **ChatGPT** | **Blue Shield Trio Platinum** | Best tail-risk protection. BlueCard network + low OOP max. |
+| **Both** | **Avoid PPO** | $8,712/year premium penalty hard to justify. OON coverage has gaps. |
 
 ---
 
@@ -69,14 +103,14 @@ Analyze Covered California Gold vs Platinum plans using Spitznagel's geometric m
 
 ### Geometric Mean Dominance
 
-The geometric mean of wealth outcomes is:
-- **GM = (W₁ × W₂ × ... × Wₙ)^(1/n)**
-- Equivalently: **log(GM) = (1/n) × Σ log(Wᵢ)**
+```
+GM = (W₁ × W₂ × ... × Wₙ)^(1/n)
 
-**Critical insight**: A single catastrophic outcome (Wᵢ → 0) drives GM → 0.
-This is why **tail risk protection** matters more than premium optimization.
+Key property: ANY Wᵢ → 0 makes GM → 0
+This is why tail risk protection matters more than expected value.
+```
 
-### Wealth Ratio Scale (P1.1)
+### Wealth Ratio Scale
 
 ```
 1.0 = 100% = kept all disposable income
@@ -86,10 +120,9 @@ This is why **tail risk protection** matters more than premium optimization.
 
 ### Health Insurance as a "Put Option"
 
-The OOP maximum acts like a put option strike price:
 - **Lower OOP max** = better downside protection = higher "put value"
-- **Network type** affects the "conditions" under which the put pays off
-- **PPO OON OOP max ($25k)** = partial protection for waiver-signers
+- **Platinum vs Gold**: $8,400 lower OOP max for $1,368 premium (Kaiser)
+- **Put cost-effectiveness**: $1,368 / $8,400 = 16.3% "premium" for tail protection
 
 ---
 
@@ -99,22 +132,20 @@ The OOP maximum acts like a put option strike price:
 
 | Task | Description |
 |------|-------------|
-| P1a | Plan data models (MedicalPlan, DentalPlan, VisionPlan) |
-| P1b | Scenario definitions |
-| P1c | Geometric mean calculation |
-| P1d | Plan comparison function |
+| P1a-d | Core plan analysis engine (plans, scenarios, geometric mean, compare) |
 | P1.1 | Wealth ratio refactor (Spitznagel 0-1 scale) |
-| **R1-R4** | **Research complete** (Prompt A via ChatGPT + Opus) |
+| P2b | NetworkType enum (HMO/PPO/EPO) + OON fields |
+| **R1-R4** | Research Prompt A (OON rules, costs) |
+| **R5-R8** | Research Prompt B (Kaiser travel, Gold vs Platinum) |
 
-### 🔄 In Progress / Next
+### 🔄 Next Steps
 
-| Task | Description | Depends On |
-|------|-------------|------------|
-| **P2b** | Network type modeling (HMO/PPO/EPO) | ✅ Research done |
-| **P2c** | Tiered OON scenario model | ✅ Research done |
-| **Prompt B** | Kaiser travel + Gold vs Platinum research | In progress |
-| **P3** | Load real Covered California plan data | P2b |
-| **P4** | Visualization (scenario waterfall) | P3 |
+| Task | Description | Priority |
+|------|-------------|----------|
+| **P3** | Update fixtures with real 2026 numbers | High |
+| **P4** | Run comparison with real data | High |
+| **P5** | Add supplemental travel insurance to model? | Medium |
+| **P6** | Visualization (scenario waterfall) | Low |
 
 ---
 
@@ -124,17 +155,15 @@ The OOP maximum acts like a put option strike price:
 |----------|------|
 | **This file** | `WORKSPACE_STATE.md` |
 | Autopilot | `docs/AI_AUTOPILOT.md` |
-| Research prompts | `docs/research/prompts/` |
-| **Research findings** | `docs/research/prompt a responses/` |
+| Research Prompt A | `docs/research/prompt a responses/` |
+| Research Prompt B | `docs/research/prompt b responses/` |
 
 ---
 
-## ⚠️ Technical Debt
+## ⚠️ Technical Debt (Reduced)
 
 | Issue | Location | Priority | Status |
 |-------|----------|----------|--------|
-| Binary OON model (too simplistic) | `scenarios.py` | **High** | 🔄 Fixing now |
-| Hardcoded $30k post-stabilization | `plans.py` | **High** | 🔄 Fixing now |
-| No network type field | `MedicalPlan` | **High** | 🔄 Fixing now |
-| No ground ambulance exposure | `plans.py` | Medium | 🔄 Adding |
+| ~~No network type field~~ | `plans.py` | ~~High~~ | ✅ Done |
+| Hardcoded test fixtures | `conftest.py` | **High** | 🔄 Updating |
 | Functions with >3 args | `geometric_mean.py` | Medium | Later |
