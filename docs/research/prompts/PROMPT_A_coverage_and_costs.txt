@@ -2,6 +2,20 @@ RESEARCH PROMPT A: OON Coverage Rules + Cost Estimates
 
 Context: I'm building a financial model to compare Covered California 2026 health insurance plans for a San Francisco couple. Using Spitznagel's geometric mean approach - which heavily penalizes worst-case outcomes ("tail risk").
 
+=== SPECIFIC PLANS I'M COMPARING ===
+From previous research, these are the top contenders:
+
+HMO Plans (Gold tier):
+- Kaiser Permanente Gold HMO — lowest premium, $8.7k OOP max, Kaiser-only network
+- Blue Shield Gold Trio HMO — UCSF + Dignity Health network, $8.7k OOP max
+
+PPO Plans (Gold and Platinum):
+- Blue Shield Gold 80 PPO — broader network, ~$17.4k OOP max
+- Blue Shield Platinum 90 PPO — lower OOP max (~$8.7k), higher premium
+
+EPO (for comparison):
+- Anthem Blue Cross Gold EPO — broad network, no referrals, no OON coverage
+
 === WHAT I ALREADY KNOW ===
 - Kaiser Gold HMO and Blue Shield Trio HMO are top value options
 - OOP max is ~$8,700 for Gold HMOs, ~$17,400 for Gold PPO (couple)
@@ -9,16 +23,23 @@ Context: I'm building a financial model to compare Covered California 2026 healt
 - No Surprises Act protects emergency care at in-network rates
 - Post-stabilization OON care "can get hammered" — but need specifics
 
+=== RESEARCH SCOPE ===
+- Focus: Covered California 2026 plans for San Francisco
+- Include: Any 2025-2026 updates to No Surprises Act or California law that affect these plans
+- Cost estimates: Colorado-specific (ski resort area like Vail/Aspen) — these may be higher than national average
+
 === GAPS I NEED FILLED ===
+
 I need to understand both the RULES and the COSTS for out-of-network care.
 
-=== PART 1: NETWORK TYPE COVERAGE RULES ===
+PART 1: NETWORK TYPE COVERAGE RULES
 
-For each plan type (HMO, PPO, EPO) on Covered California:
+For HMO, PPO, and EPO plans on Covered California:
 
 1. EMERGENCY CARE
    - Is emergency OON care covered at in-network rates per the No Surprises Act?
    - Are there ANY situations where I'd pay more for OON emergency care?
+   - Any differences between Kaiser HMO vs Blue Shield HMO vs Anthem EPO for this?
 
 2. POST-STABILIZATION CARE
    - What exactly is "post-stabilization" care?
@@ -28,17 +49,18 @@ For each plan type (HMO, PPO, EPO) on Covered California:
      * Surgery scheduled for the next day?
      * Physical therapy before discharge?
    - Does this differ by plan type (HMO vs PPO vs EPO)?
+   - Does Kaiser have different rules than Blue Shield HMO?
 
 3. NON-EMERGENCY OON CARE
-   - Do ANY Covered California PPO plans cover elective OON care?
-   - What's the typical OON deductible/OOP max on exchange PPOs?
+   - Does Blue Shield Gold/Platinum PPO cover ANY elective OON care?
+   - What's the OON deductible/OOP max on exchange PPOs (if any)?
    - Is EPO essentially "HMO without referrals" for OON purposes?
 
 4. BALANCE BILLING PROTECTION
    - What does California's balance billing law actually protect?
    - Are there gaps where I could still get surprise bills?
 
-=== PART 2: REALISTIC COST ESTIMATES ===
+PART 2: REALISTIC COST ESTIMATES (COLORADO SKI RESORT AREA)
 
 Scenario: A healthy 35-year-old breaks their leg badly while skiing in Colorado (out-of-network for their California HMO/EPO plan).
 
@@ -46,7 +68,7 @@ Emergency room visit and initial stabilization is covered. What happens after?
 
 Assuming NO insurance coverage for post-stabilization:
 
-5. TYPICAL COSTS FOR:
+5. TYPICAL COSTS FOR (Colorado ski resort area pricing):
    - Orthopedic surgery for a complex leg fracture (ORIF)?
    - 3-5 day hospital stay after surgery?
    - 2 weeks inpatient rehab?
@@ -60,12 +82,13 @@ Assuming NO insurance coverage for post-stabilization:
 
 7. NEGOTIATION REALITY
    - If paying out-of-pocket, can you negotiate down from "list price"?
-   - What's realistic to actually pay?
+   - What's realistic to expect to actually pay?
 
-I'm currently using $30,000 as my "post-stabilization exposure" parameter. Is this realistic, too high, or too low?
+I'm currently using $30,000 as my "post-stabilization exposure" parameter. Is this realistic, too high, or too low for Colorado resort-area care?
 
 === WHAT I NEED FOR MY MODEL ===
 
-- Clear rules: What's covered vs not covered by plan type
+- Clear rules: What's covered vs not covered by plan type (especially Kaiser vs PPO)
 - Dollar estimates: What's realistic OON exposure in Colorado scenario
 - Any gotchas or edge cases I should model
+- Whether $30k assumption should be adjusted
