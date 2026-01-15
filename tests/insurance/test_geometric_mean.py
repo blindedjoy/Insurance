@@ -25,8 +25,8 @@ class TestExpectedLogWealthExists:
         from src.insurance.geometric_mean import compute_expected_log_wealth
         
         result = compute_expected_log_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=default_scenarios,
         )
@@ -39,7 +39,7 @@ class TestExpectedLogWealthMath:
 
     def test_no_cost_scenario_gives_zero_log(self, typical_couple_income, typical_baseline_spend):
         """If no costs at all, relative wealth = 1, log = 0."""
-        from src.insurance.geometric_mean import compute_scenario_wealth
+        from src.insurance.geometric_mean import compute_scenario_wealth, compute_wealth_ratio
         from src.insurance.plans import MedicalPlan
         from src.insurance.scenarios import Scenario
         
@@ -53,35 +53,35 @@ class TestExpectedLogWealthMath:
         
         no_cost_scenario = Scenario("no_cost", 1.0, medical_oop=0.0)
         
-        wealth = compute_scenario_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+        # Using new ratio function
+        disposable = typical_couple_income - typical_baseline_spend
+        ratio = compute_wealth_ratio(
+            disposable_income=disposable,
             total_premium=0.0,
             scenario_oop=0.0,
         )
         
-        disposable = typical_couple_income - typical_baseline_spend
-        assert wealth == disposable
+        assert ratio == 1.0  # No spending = ratio of 1
 
     def test_higher_oop_means_lower_wealth(self, typical_couple_income, typical_baseline_spend):
         """Higher OOP should result in lower remaining wealth."""
-        from src.insurance.geometric_mean import compute_scenario_wealth
+        from src.insurance.geometric_mean import compute_wealth_ratio
         
-        wealth_low = compute_scenario_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+        disposable = typical_couple_income - typical_baseline_spend
+        
+        ratio_low = compute_wealth_ratio(
+            disposable_income=disposable,
             total_premium=24_000,
             scenario_oop=1_000,
         )
         
-        wealth_high = compute_scenario_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+        ratio_high = compute_wealth_ratio(
+            disposable_income=disposable,
             total_premium=24_000,
             scenario_oop=20_000,
         )
         
-        assert wealth_high < wealth_low
+        assert ratio_high < ratio_low
 
     def test_catastrophic_loss_dominates_gm(self, gold_ppo_plan, typical_couple_income, typical_baseline_spend):
         """A near-total loss scenario should dramatically reduce GM."""
@@ -101,15 +101,15 @@ class TestExpectedLogWealthMath:
         ]
         
         gm_normal = compute_expected_log_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=normal_scenarios,
         )
         
         gm_disaster = compute_expected_log_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=disaster_scenarios,
         )
@@ -127,22 +127,22 @@ class TestGeometricMeanWealth:
         assert callable(compute_geometric_mean_wealth)
 
     def test_gm_is_exp_of_expected_log(self, gold_ppo_plan, default_scenarios, typical_couple_income, typical_baseline_spend):
-        """GM = exp(E[log(W)])."""
+        """GM = exp(E[log(W)]) × disposable."""
         from src.insurance.geometric_mean import (
             compute_expected_log_wealth,
             compute_geometric_mean_wealth,
         )
         
         expected_log = compute_expected_log_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=default_scenarios,
         )
         
         gm = compute_geometric_mean_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=default_scenarios,
         )
@@ -165,26 +165,26 @@ class TestPlatinumVsGoldGM:
         typical_baseline_spend
     ):
         """Platinum should preserve more wealth in catastrophic scenarios."""
-        from src.insurance.geometric_mean import compute_scenario_wealth
+        from src.insurance.geometric_mean import compute_wealth_ratio
+        
+        disposable = typical_couple_income - typical_baseline_spend
         
         # Catastrophic scenario - hit OOP max
-        gold_wealth = compute_scenario_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+        gold_ratio = compute_wealth_ratio(
+            disposable_income=disposable,
             total_premium=gold_ppo_plan.annual_premium,
             scenario_oop=gold_ppo_plan.in_network_oop_max,
         )
         
-        plat_wealth = compute_scenario_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+        plat_ratio = compute_wealth_ratio(
+            disposable_income=disposable,
             total_premium=platinum_ppo_plan.annual_premium,
             scenario_oop=platinum_ppo_plan.in_network_oop_max,
         )
         
         # Platinum has higher premium but lower OOP max
         # Net effect: platinum should preserve more wealth in catastrophe
-        assert plat_wealth > gold_wealth
+        assert plat_ratio > gold_ratio
 
     def test_gold_better_in_no_use_scenario(
         self, 
@@ -194,25 +194,25 @@ class TestPlatinumVsGoldGM:
         typical_baseline_spend
     ):
         """Gold should preserve more wealth when no healthcare used."""
-        from src.insurance.geometric_mean import compute_scenario_wealth
+        from src.insurance.geometric_mean import compute_wealth_ratio
+        
+        disposable = typical_couple_income - typical_baseline_spend
         
         # No use scenario - only premium cost
-        gold_wealth = compute_scenario_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+        gold_ratio = compute_wealth_ratio(
+            disposable_income=disposable,
             total_premium=gold_ppo_plan.annual_premium,
             scenario_oop=0.0,
         )
         
-        plat_wealth = compute_scenario_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+        plat_ratio = compute_wealth_ratio(
+            disposable_income=disposable,
             total_premium=platinum_ppo_plan.annual_premium,
             scenario_oop=0.0,
         )
         
         # Gold has lower premium, so more wealth preserved
-        assert gold_wealth > plat_wealth
+        assert gold_ratio > plat_ratio
 
 
 class TestDentalVisionAddons:
@@ -232,16 +232,16 @@ class TestDentalVisionAddons:
         
         # Without addons
         log_wealth_no_addons = compute_expected_log_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=default_scenarios,
         )
         
         # With addons
         log_wealth_with_addons = compute_expected_log_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=default_scenarios,
             dental=basic_dental,
@@ -278,15 +278,15 @@ class TestEqualWeighting:
         
         # With equal weighting, results should be the same
         log_v1 = compute_expected_log_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=scenarios_v1,
         )
         
         log_v2 = compute_expected_log_wealth(
-            annual_income=typical_couple_income,
-            annual_baseline_spend=typical_baseline_spend,
+            after_tax_income=typical_couple_income,
+            baseline_spend=typical_baseline_spend,
             plan=gold_ppo_plan,
             scenarios=scenarios_v2,
         )
