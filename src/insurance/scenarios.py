@@ -112,16 +112,21 @@ def build_scenarios_for_plan(plan: MedicalPlan) -> List[Scenario]:
         # Would need separate OON OOP max - rare on exchange plans
         emergency_oop = plan.in_network_oop_max * 2  # Conservative estimate
     
+    # Post-stabilization exposure (if not covered by plan)
     if plan.post_stabilization_oon_covered:
         post_stab_extra = 0.0
     else:
         post_stab_extra = plan.post_stabilization_exposure
     
+    # Ground ambulance is NOT protected by No Surprises Act
+    # Always add this exposure for OON scenarios
+    ground_ambulance = plan.ground_ambulance_exposure
+    
     scenarios.append(Scenario(
         name="cat_oon_emergency",
         probability=DEFAULT_PROBABILITIES["cat_oon_emergency"],
         medical_oop=emergency_oop,
-        extra_oon=post_stab_extra,
+        extra_oon=post_stab_extra + ground_ambulance,
     ))
     
     return scenarios

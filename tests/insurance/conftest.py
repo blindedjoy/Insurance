@@ -1,94 +1,81 @@
 """Shared fixtures for insurance tests.
 
-These fixtures provide reusable test data following DRY principles.
+Fixtures use the shared data module (src/insurance/data.py) to avoid DRY violations.
+All values are from Covered California 2026 research (Jan 2026).
 """
 
 import pytest
 from src.insurance.plans import MedicalPlan, DentalPlan, VisionPlan, NetworkType
 from src.insurance.scenarios import Scenario
+from src.insurance.data import (
+    KAISER_GOLD_HMO,
+    KAISER_PLATINUM_HMO,
+    BLUE_SHIELD_TRIO_GOLD_HMO,
+    BLUE_SHIELD_TRIO_PLATINUM_HMO,
+    BLUE_SHIELD_GOLD_PPO,
+    BLUE_SHIELD_PLATINUM_PPO,
+    DELTA_DENTAL,
+    VSP_VISION,
+    DEFAULT_GROSS_INCOME,
+    DEFAULT_TAX_RATE,
+    DEFAULT_BASELINE_SPEND,
+)
 
 
 # =============================================================================
-# Plan Fixtures
+# Plan Fixtures - Using shared data module (Single Source of Truth)
 # =============================================================================
 
 @pytest.fixture
+def kaiser_gold_hmo() -> MedicalPlan:
+    """Kaiser Permanente Gold HMO - lowest premium, integrated network."""
+    return KAISER_GOLD_HMO
+
+
+@pytest.fixture
+def kaiser_platinum_hmo() -> MedicalPlan:
+    """Kaiser Permanente Platinum HMO - lower OOP max, higher premium."""
+    return KAISER_PLATINUM_HMO
+
+
+@pytest.fixture
+def blue_shield_trio_gold_hmo() -> MedicalPlan:
+    """Blue Shield Trio Gold HMO - narrow network (UCSF, Dignity)."""
+    return BLUE_SHIELD_TRIO_GOLD_HMO
+
+
+@pytest.fixture
+def blue_shield_trio_platinum_hmo() -> MedicalPlan:
+    """Blue Shield Trio Platinum HMO - ChatGPT's recommended plan."""
+    return BLUE_SHIELD_TRIO_PLATINUM_HMO
+
+
+@pytest.fixture
 def gold_ppo_plan() -> MedicalPlan:
-    """Blue Shield Gold 80 PPO - typical Gold tier plan."""
-    return MedicalPlan(
-        name="Blue Shield Gold 80 PPO",
-        annual_premium=24_000.0,  # $2000/month for couple
-        in_network_oop_max=17_400.0,  # Couple OOP max
-        network_type=NetworkType.PPO,
-        deductible=0.0,  # Gold plans often $0 deductible
-        expected_minor_oop=400.0,
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=False,
-        post_stabilization_exposure=30_000.0,
-        # PPO OON fields (from research)
-        oon_deductible=5_500.0,
-        oon_oop_max=25_000.0,
-        oon_coinsurance=0.50,
-        ground_ambulance_exposure=1_500.0,
-    )
+    """Blue Shield Gold 80 PPO - broad network, OON coverage exists."""
+    return BLUE_SHIELD_GOLD_PPO
 
 
 @pytest.fixture
 def platinum_ppo_plan() -> MedicalPlan:
-    """Blue Shield Platinum 90 PPO - typical Platinum tier plan."""
-    return MedicalPlan(
-        name="Blue Shield Platinum 90 PPO",
-        annual_premium=30_000.0,  # Higher premium than Gold
-        in_network_oop_max=8_700.0,  # Lower OOP max (key benefit)
-        network_type=NetworkType.PPO,
-        deductible=0.0,
-        expected_minor_oop=300.0,  # Lower copays
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=False,
-        post_stabilization_exposure=30_000.0,
-        # PPO OON fields
-        oon_deductible=5_500.0,
-        oon_oop_max=25_000.0,
-        oon_coinsurance=0.50,
-        ground_ambulance_exposure=1_500.0,
-    )
-
-
-@pytest.fixture
-def kaiser_gold_hmo() -> MedicalPlan:
-    """Kaiser Permanente Gold HMO - low cost, closed network."""
-    return MedicalPlan(
-        name="Kaiser Gold HMO",
-        annual_premium=18_000.0,  # Lower premium
-        in_network_oop_max=8_700.0,  # Couple OOP max
-        network_type=NetworkType.HMO,
-        deductible=0.0,
-        expected_minor_oop=350.0,
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=False,
-        post_stabilization_exposure=30_000.0,
-        # HMO doesn't have meaningful OON coverage
-        oon_deductible=0.0,
-        oon_oop_max=0.0,  # No OON cap for HMO
-        oon_coinsurance=1.0,  # You pay 100%
-        ground_ambulance_exposure=1_500.0,
-    )
+    """Blue Shield Platinum 90 PPO - richest benefits, highest premium."""
+    return BLUE_SHIELD_PLATINUM_PPO
 
 
 @pytest.fixture
 def anthem_gold_epo() -> MedicalPlan:
     """Anthem Blue Cross Gold EPO - broad network, no OON coverage."""
+    # EPO not in shared data yet - keep inline for now
     return MedicalPlan(
         name="Anthem Blue Cross Gold EPO",
-        annual_premium=22_000.0,
-        in_network_oop_max=8_700.0,
+        annual_premium=22_000.0,  # Estimated
+        in_network_oop_max=18_400.0,
         network_type=NetworkType.EPO,
         deductible=0.0,
         expected_minor_oop=400.0,
         oon_emergency_treated_as_in_network=True,
         post_stabilization_oon_covered=False,
-        post_stabilization_exposure=30_000.0,
-        # EPO: no OON coverage (like HMO)
+        post_stabilization_exposure=15_000.0,
         oon_deductible=0.0,
         oon_oop_max=0.0,
         oon_coinsurance=1.0,
@@ -98,31 +85,23 @@ def anthem_gold_epo() -> MedicalPlan:
 
 @pytest.fixture
 def basic_dental() -> DentalPlan:
-    """Basic dental plan from Covered California."""
-    return DentalPlan(
-        name="Delta Dental PPO",
-        annual_premium=800.0,
-        expected_oop=200.0,
-    )
+    """Delta Dental PPO from Covered California."""
+    return DELTA_DENTAL
 
 
 @pytest.fixture
 def basic_vision() -> VisionPlan:
-    """Basic vision plan (VSP or EyeMed)."""
-    return VisionPlan(
-        name="VSP Vision",
-        annual_premium=300.0,
-        expected_oop=50.0,
-    )
+    """VSP Vision from Covered California."""
+    return VSP_VISION
 
 
 # =============================================================================
-# Scenario Fixtures
+# Scenario Fixtures - Updated with Research Findings
 # =============================================================================
 
 @pytest.fixture
 def no_use_scenario() -> Scenario:
-    """Healthy year - no healthcare usage."""
+    """Healthy year - no healthcare usage (70% probability)."""
     return Scenario(
         name="no_use",
         probability=0.70,
@@ -132,32 +111,51 @@ def no_use_scenario() -> Scenario:
 
 @pytest.fixture
 def minor_use_scenario() -> Scenario:
-    """Typical year - some doctor visits, prescriptions."""
+    """Typical year - some doctor visits, prescriptions (25% probability)."""
     return Scenario(
         name="minor_use",
         probability=0.25,
-        medical_oop=400.0,  # Will be overridden by plan.expected_minor_oop
+        medical_oop=400.0,
+    )
+
+
+@pytest.fixture
+def high_use_scenario() -> Scenario:
+    """High cost year - one person hits significant costs (8% probability)."""
+    return Scenario(
+        name="high_use",
+        probability=0.08,
+        medical_oop=5_000.0,  # One person with moderate costs
     )
 
 
 @pytest.fixture
 def cat_in_network_scenario() -> Scenario:
-    """Catastrophic event in-network (surgery, hospitalization)."""
+    """Catastrophic event in-network - both hit OOP max (3% probability)."""
     return Scenario(
         name="cat_in_network",
         probability=0.03,
-        medical_oop=17_400.0,  # Will be overridden by plan.in_network_oop_max
+        medical_oop=18_400.0,  # Gold couple OOP max
     )
 
 
 @pytest.fixture
 def cat_oon_scenario() -> Scenario:
-    """Catastrophic event out-of-network (Colorado skiing accident)."""
+    """Catastrophic event out-of-network (Colorado skiing accident).
+    
+    Research tiered exposure:
+    - Best case: $3,000 (30%)
+    - Expected: $15,000 (50%)
+    - Moderate worst: $35,000 (18%)
+    - Catastrophic: $75,000 (2%)
+    
+    Using expected case ($15k) + ground ambulance ($1.5k) for model.
+    """
     return Scenario(
         name="cat_oon_emergency",
         probability=0.02,
-        medical_oop=17_400.0,  # Emergency part (in-network-like)
-        extra_oon=30_000.0,  # Post-stabilization exposure
+        medical_oop=18_400.0,  # Emergency at in-network rates
+        extra_oon=16_500.0,  # $15k post-stab + $1.5k ground ambulance
     )
 
 
@@ -183,7 +181,7 @@ def default_scenarios(
 
 @pytest.fixture
 def typical_couple_income() -> float:
-    """Typical SF couple household income."""
+    """Typical SF couple household income (no subsidies at this level)."""
     return 240_000.0
 
 
@@ -191,3 +189,9 @@ def typical_couple_income() -> float:
 def typical_baseline_spend() -> float:
     """Typical annual baseline spending (rent, food, etc.)."""
     return 120_000.0
+
+
+@pytest.fixture
+def typical_tax_rate() -> float:
+    """Effective tax rate for SF couple at $240k income."""
+    return 0.35  # ~35% federal + state + FICA

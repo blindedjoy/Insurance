@@ -10,64 +10,45 @@ The geometric mean is dominated by the MINIMUM outcome.
 Any near-zero outcome (catastrophe) drives GM toward zero.
 """
 
-from src.insurance import (
-    MedicalPlan, DentalPlan, VisionPlan,
-    compare_plans, format_comparison_table,
+from src.insurance import compare_plans, format_comparison_table
+from src.insurance.data import (
+    # Plans (Single Source of Truth)
+    KAISER_GOLD_HMO,
+    KAISER_PLATINUM_HMO,
+    BLUE_SHIELD_TRIO_GOLD_HMO,
+    BLUE_SHIELD_TRIO_PLATINUM_HMO,
+    BLUE_SHIELD_GOLD_PPO,
+    BLUE_SHIELD_PLATINUM_PPO,
+    ALL_PLANS,
+    # Add-ons
+    DELTA_DENTAL,
+    VSP_VISION,
+    # Financial defaults
+    DEFAULT_GROSS_INCOME,
+    DEFAULT_TAX_RATE,
+    DEFAULT_BASELINE_SPEND,
+    DEFAULT_AFTER_TAX,
+    DEFAULT_DISPOSABLE,
 )
+from src.insurance.scenarios import build_scenarios_for_plan
 from src.insurance.geometric_mean import compute_wealth_ratio, compute_geometric_mean_ratio
 
 # =============================================================================
-# PLAN DEFINITIONS (from Covered California research)
+# FINANCIAL PARAMETERS (from data.py - customize there if needed)
 # =============================================================================
 
-gold_ppo = MedicalPlan(
-    name="Blue Shield Gold 80 PPO",
-    annual_premium=24_000,  # ~$2000/month couple
-    in_network_oop_max=17_400,
-    deductible=0,
-    expected_minor_oop=400,
-)
-
-platinum_ppo = MedicalPlan(
-    name="Blue Shield Platinum 90 PPO",
-    annual_premium=30_000,  # Higher premium
-    in_network_oop_max=8_700,  # Lower OOP max (the "put protection")
-    deductible=0,
-    expected_minor_oop=300,
-)
-
-kaiser_gold = MedicalPlan(
-    name="Kaiser Gold HMO",
-    annual_premium=18_000,
-    in_network_oop_max=8_700,
-    deductible=0,
-    expected_minor_oop=350,
-)
-
-blue_shield_trio = MedicalPlan(
-    name="Blue Shield Gold Trio HMO",
-    annual_premium=21_000,
-    in_network_oop_max=8_700,
-    deductible=0,
-    expected_minor_oop=400,
-)
+GROSS_INCOME = DEFAULT_GROSS_INCOME  # $240,000
+TAX_RATE = DEFAULT_TAX_RATE  # 32%
+AFTER_TAX_INCOME = DEFAULT_AFTER_TAX  # $163,200
+BASELINE_SPEND = DEFAULT_BASELINE_SPEND  # $130,000 (realistic SF)
+DISPOSABLE = DEFAULT_DISPOSABLE  # $33,200
 
 # Add-ons
-dental = DentalPlan(name="Delta Dental", annual_premium=800, expected_oop=200)
-vision = VisionPlan(name="VSP Vision", annual_premium=300, expected_oop=50)
+dental = DELTA_DENTAL
+vision = VSP_VISION
 
 # =============================================================================
-# FINANCIAL PARAMETERS
-# =============================================================================
-
-GROSS_INCOME = 240_000  # SF couple
-TAX_RATE = 0.30  # ~30% effective (fed + CA state)
-AFTER_TAX_INCOME = GROSS_INCOME * (1 - TAX_RATE)  # $168,000
-BASELINE_SPEND = 80_000  # Rent, food, etc.
-DISPOSABLE = AFTER_TAX_INCOME - BASELINE_SPEND  # $88,000
-
-# =============================================================================
-# DEMO: WEALTH RATIO CALCULATION
+# DEMO: FINANCIAL SETUP
 # =============================================================================
 
 print("\n" + "="*70)
@@ -77,51 +58,78 @@ print("="*70)
 print(f"\nFinancial Setup:")
 print(f"  Gross Income:     ${GROSS_INCOME:,}")
 print(f"  Tax Rate:         {TAX_RATE:.0%}")
-print(f"  After-Tax Income: ${AFTER_TAX_INCOME:,}")
-print(f"  Baseline Spend:   ${BASELINE_SPEND:,}")
-print(f"  Disposable:       ${DISPOSABLE:,}  ← This is '1.0' on the ratio scale")
-
-print(f"\n--- Kaiser Gold HMO Wealth Ratios by Scenario ---")
-print(f"  (Premium: ${kaiser_gold.annual_premium + dental.annual_premium + vision.annual_premium:,})")
-
-scenarios = [
-    ("No Use", 0),
-    ("Minor Use", kaiser_gold.expected_minor_oop + dental.expected_oop + vision.expected_oop),
-    ("Catastrophe (in-network)", kaiser_gold.in_network_oop_max + dental.expected_oop + vision.expected_oop),
-    ("Catastrophe (OON emergency)", kaiser_gold.in_network_oop_max + 30_000 + dental.expected_oop + vision.expected_oop),
-]
-
-total_premium = kaiser_gold.annual_premium + dental.annual_premium + vision.annual_premium
-ratios = []
-
-for name, oop in scenarios:
-    ratio = compute_wealth_ratio(
-        disposable_income=DISPOSABLE,
-        total_premium=total_premium,
-        scenario_oop=oop,
-    )
-    ratios.append(ratio)
-    remaining = ratio * DISPOSABLE
-    print(f"  {name:30s}: {ratio:.2%} (${remaining:,.0f})")
-
-gm = compute_geometric_mean_ratio(ratios)
-print(f"\n  Geometric Mean Ratio: {gm:.2%}")
-print(f"  GM Wealth:            ${gm * DISPOSABLE:,.0f}")
-
-print(f"\n  ⚠️  Note: The OON catastrophe ({ratios[-1]:.1%}) pulls down the GM significantly!")
-print(f"      This is Spitznagel's key insight: tail risk dominates.")
+print(f"  After-Tax Income: ${AFTER_TAX_INCOME:,.0f}")
+print(f"  Baseline Spend:   ${BASELINE_SPEND:,} (SF realistic)")
+print(f"  Disposable:       ${DISPOSABLE:,.0f}  ← This is '1.0' on the ratio scale")
 
 # =============================================================================
-# DEMO: PLAN COMPARISON
+# DEMO: PLAN SCENARIOS (using shared build_scenarios_for_plan)
+# =============================================================================
+
+def demo_plan_scenarios(plan, dental, vision) -> tuple[list[float], float]:
+    """Show wealth ratios for a plan using shared scenario builder."""
+    scenarios = build_scenarios_for_plan(plan)
+    total_premium = plan.annual_premium + dental.annual_premium + vision.annual_premium
+    addon_oop = dental.expected_oop + vision.expected_oop
+    
+    print(f"\n--- {plan.name} ---")
+    print(f"  Premium: ${total_premium:,.0f}/year")
+    print(f"  OOP Max: ${plan.in_network_oop_max:,.0f} (couple)")
+    
+    ratios = []
+    for s in scenarios:
+        total_oop = s.total_oop + addon_oop
+        ratio = compute_wealth_ratio(
+            disposable_income=DISPOSABLE,
+            total_premium=total_premium,
+            scenario_oop=total_oop,
+        )
+        ratios.append(ratio)
+        remaining = ratio * DISPOSABLE
+        print(f"  {s.name:30s} ({s.probability:.0%}): {ratio:.2%} (${remaining:,.0f})")
+    
+    gm = compute_geometric_mean_ratio(ratios)
+    print(f"\n  Geometric Mean Ratio: {gm:.2%}")
+    print(f"  GM Wealth:            ${gm * DISPOSABLE:,.0f}")
+    return ratios, gm
+
+# =============================================================================
+# GOLD vs PLATINUM COMPARISON
 # =============================================================================
 
 print("\n" + "="*70)
-print("PLAN COMPARISON (Geometric Mean Ranking)")
+print("GOLD vs PLATINUM COMPARISON (Kaiser)")
+print("="*70)
+
+kaiser_gold_ratios, kaiser_gold_gm = demo_plan_scenarios(KAISER_GOLD_HMO, dental, vision)
+kaiser_plat_ratios, kaiser_plat_gm = demo_plan_scenarios(KAISER_PLATINUM_HMO, dental, vision)
+
+print("\n" + "-"*70)
+print("KEY INSIGHT: Kaiser Platinum IS worth it")
+print("-"*70)
+premium_diff = KAISER_PLATINUM_HMO.annual_premium - KAISER_GOLD_HMO.annual_premium
+oop_savings = KAISER_GOLD_HMO.in_network_oop_max - KAISER_PLATINUM_HMO.in_network_oop_max
+print(f"  Premium difference: ${premium_diff:,.0f}/year")
+print(f"  OOP max savings:    ${oop_savings:,.0f} in catastrophe")
+print(f"  Net benefit:        ${oop_savings - premium_diff:,.0f} in worst case")
+print(f"\n  Gold GM:     {kaiser_gold_gm:.2%}")
+print(f"  Platinum GM: {kaiser_plat_gm:.2%}")
+if kaiser_plat_gm > kaiser_gold_gm:
+    print(f"  ✅ Platinum wins by {(kaiser_plat_gm - kaiser_gold_gm)*100:.2f} percentage points")
+else:
+    print(f"  ⚠️  Gold wins - catastrophe not likely enough to justify premium")
+
+# =============================================================================
+# FULL PLAN COMPARISON (All 6 Plans)
+# =============================================================================
+
+print("\n" + "="*70)
+print("FULL PLAN COMPARISON (Geometric Mean Ranking)")
 print("="*70)
 
 results = compare_plans(
-    plans=[gold_ppo, platinum_ppo, kaiser_gold, blue_shield_trio],
-    annual_income=AFTER_TAX_INCOME,  # Using after-tax
+    plans=ALL_PLANS,
+    annual_income=AFTER_TAX_INCOME,
     annual_baseline_spend=BASELINE_SPEND,
     dental=dental,
     vision=vision,
@@ -135,8 +143,30 @@ print(f"\n--- Winner's Scenario Ratios ---")
 for name, ratio in results[0].scenario_ratios.items():
     print(f"  {name:25s}: {ratio:.1%}")
 
-print(f"\n--- Key Insight (Spitznagel / Tao of Capital) ---")
-print("The geometric mean naturally penalizes high-variance downside.")
-print("Plans with lower OOP max (better 'put protection') win because they")
-print("prevent the catastrophic scenario from dominating the GM calculation.")
-print("\nThe insurance 'put' is the OOP maximum - it caps your downside loss.")
+print(f"\n" + "="*70)
+print("KEY INSIGHTS (Spitznagel / Tao of Capital)")
+print("="*70)
+print("""
+1. GEOMETRIC MEAN IS DOMINATED BY THE MINIMUM
+   Any near-zero outcome (catastrophe) drives GM toward zero.
+   This is why downside protection matters more than expected value.
+
+2. PLATINUM WINS FOR KAISER (but NOT for PPO)
+   - Kaiser: +$1,368 premium → -$8,400 OOP max = +$7,032 net benefit
+   - PPO:    +$9,768 premium → -$8,400 OOP max = -$1,368 net LOSS
+
+3. AVOID PPO (both research sources agree)
+   - $8,712/year premium penalty vs Kaiser Gold
+   - OON coverage has gaps (50% coinsurance, $5.5k deductible)
+   - Not worth it for occasional travel risk
+
+4. HMO TRAVEL RISK IS OVERBLOWN
+   - Emergency: Protected by No Surprises Act
+   - Kaiser has 1,100+ doctors in Colorado
+   - Blue Shield has BlueCard national network
+   - Post-stabilization exposure: ~$15k expected (manageable)
+
+5. THE INSURANCE "PUT"
+   OOP maximum = your strike price (caps downside loss)
+   Lower OOP max = better put protection = higher geometric mean
+""")
