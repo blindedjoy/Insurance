@@ -2,6 +2,7 @@
 
 > **Goal**: Compare Covered California health insurance plans (Gold vs Platinum + dental/vision) using Spitznagel's geometric mean framework.
 > **Constraint**: TDD for all implementations. Tests first, then code.
+> **Style**: Uncle Bob — max 3 function arguments, use config objects.
 
 ---
 
@@ -13,156 +14,268 @@ ROI = Entropy × Ease. Higher ROI = do first.
 
 | Task | Description | Status | Tests |
 |------|-------------|--------|-------|
-| P1a | Plan data models (MedicalPlan, DentalPlan, VisionPlan) | ✅ | `test_plans.py` (18) |
+| P1a | Plan data models | ✅ | `test_plans.py` (18) |
 | P1b | Scenario definitions | ✅ | `test_scenarios.py` (16) |
-| P1c | Geometric mean / log-wealth calculation | ✅ | `test_geometric_mean.py` (15) |
-| P1d | Plan comparison (Gold vs Platinum) | ✅ | `test_compare.py` (12) |
-| **Total** | **61 tests passing** | ✅ | — |
+| P1c | Geometric mean / log-wealth | ✅ | `test_geometric_mean.py` (15) |
+| P1d | Plan comparison | ✅ | `test_compare.py` (12) |
+| P1.1 | Wealth ratio refactor | ✅ | `test_wealth_ratio.py` (21) |
+| **Total** | **82 tests passing** | ✅ | — |
 
-#### Design: Data Models
+---
+
+### 🔄 P2: Config Refactor + Network Modeling — IN PROGRESS
+
+#### P2a: Config Objects (Uncle Bob)
+
+**Problem**: Functions have too many arguments (>3).
+
+**Solution**: Create config dataclasses.
+
+```python
+# src/insurance/config.py
+@dataclass
+class FinancialConfig:
+    """Household financial parameters."""
+    gross_income: float
+    tax_rate: float
+    baseline_spend: float
+    
+    @property
+    def after_tax_income(self) -> float:
+        return self.gross_income * (1 - self.tax_rate)
+    
+    @property
+    def disposable_income(self) -> float:
+        return self.after_tax_income - self.baseline_spend
+
+
+@dataclass
+class PlanBundle:
+    """Medical + optional dental/vision."""
+    medical: MedicalPlan
+    dental: Optional[DentalPlan] = None
+    vision: Optional[VisionPlan] = None
+    
+    @property
+    def total_premium(self) -> float:
+        return sum(p.annual_premium for p in [self.medical, self.dental, self.vision] if p)
+
+
+# Refactored function signature:
+def compute_expected_log_wealth(
+    config: FinancialConfig,
+    bundle: PlanBundle,
+    scenarios: List[Scenario],
+) -> float:
+    """Now has only 3 arguments (Uncle Bob approved)."""
+```
+
+| Sub-task | Description | Tests |
+|----------|-------------|-------|
+| P2a.1 | Create `FinancialConfig` | `test_config.py` |
+| P2a.2 | Create `PlanBundle` | `test_config.py` |
+| P2a.3 | Refactor `compute_expected_log_wealth` | Update existing |
+| P2a.4 | Refactor `compare_plans` | Update existing |
+
+---
+
+#### P2b: Network Type Modeling
+
+**Problem**: Current model ignores HMO/PPO/EPO differences.
+
+**Solution**: Add network type to `MedicalPlan` with OON coverage rules.
 
 ```python
 # src/insurance/plans.py
-@dataclass
-class MedicalPlan:
-    """Medical insurance plan with cost-sharing details.
-    
-    Attributes:
-        name: Plan name (e.g., "Blue Shield Gold 80 PPO")
-        annual_premium: Total annual premium (after subsidies if any)
-        in_network_oop_max: Maximum out-of-pocket for in-network care
-        deductible: Annual deductible before insurance pays
-        expected_minor_oop: Estimated OOP for "normal year" usage
-        oon_emergency_treated_as_in_network: Emergency OON uses in-network cost-sharing
-        post_stabilization_oon_covered: Coverage for post-emergency OON care
-        post_stabilization_exposure: Extra OOP risk if not covered
-    """
-    name: str
-    annual_premium: float
-    in_network_oop_max: float
-    deductible: float = 0.0
-    expected_minor_oop: float = 400.0
-    oon_emergency_treated_as_in_network: bool = True  # No Surprises Act
-    post_stabilization_oon_covered: bool = False  # Conservative for exchange plans
-    post_stabilization_exposure: float = 30_000.0  # Tail risk estimate
+from enum import Enum
+
+class NetworkType(Enum):
+    HMO = "hmo"      # Referrals required, OON emergency only
+    PPO = "ppo"      # No referrals, some OON coverage
+    EPO = "epo"      # No referrals, NO OON coverage (except emergency)
+
 
 @dataclass
-class DentalPlan:
-    """Dental insurance add-on."""
-    name: str
-    annual_premium: float
-    expected_oop: float = 200.0  # Average annual dental OOP
+class OONCoverageRules:
+    """Out-of-network coverage rules by situation."""
+    emergency_covered: bool = True  # Always True per No Surprises Act
+    emergency_cost_share: float = 1.0  # 1.0 = in-network rates, <1.0 = partial
+    post_stabilization_covered: bool = False
+    post_stabilization_cost_share: float = 0.0  # 0.0 = you pay 100%
+    elective_oon_covered: bool = False
 
-@dataclass
-class VisionPlan:
-    """Vision insurance add-on."""
-    name: str
-    annual_premium: float
-    expected_oop: float = 50.0  # Average annual vision OOP
+
+# Default rules by network type
+DEFAULT_OON_RULES = {
+    NetworkType.HMO: OONCoverageRules(
+        emergency_covered=True,
+        emergency_cost_share=1.0,
+        post_stabilization_covered=False,
+        post_stabilization_cost_share=0.0,
+        elective_oon_covered=False,
+    ),
+    NetworkType.PPO: OONCoverageRules(
+        emergency_covered=True,
+        emergency_cost_share=1.0,
+        post_stabilization_covered=True,  # Usually some coverage
+        post_stabilization_cost_share=0.5,  # 50% covered (estimate)
+        elective_oon_covered=False,  # Not on exchange plans
+    ),
+    NetworkType.EPO: OONCoverageRules(
+        emergency_covered=True,
+        emergency_cost_share=1.0,
+        post_stabilization_covered=False,
+        post_stabilization_cost_share=0.0,
+        elective_oon_covered=False,
+    ),
+}
 ```
 
-#### Design: Scenarios
+| Sub-task | Description | Tests |
+|----------|-------------|-------|
+| P2b.1 | Add `NetworkType` enum | `test_plans.py` |
+| P2b.2 | Add `OONCoverageRules` | `test_plans.py` |
+| P2b.3 | Update `MedicalPlan` with network_type | `test_plans.py` |
+| P2b.4 | Update scenario builder for network rules | `test_scenarios.py` |
+
+---
+
+#### P2c: OON Probability Model (Requires Research)
+
+**Problem**: What's the probability of needing OON care?
+
+**Current assumption**: Fixed $30k post-stabilization exposure.
+
+**Better model** (after research):
 
 ```python
-# src/insurance/scenarios.py
 @dataclass
-class Scenario:
-    """A possible healthcare outcome scenario.
+class OONScenarioConfig:
+    """Configuration for out-of-network scenarios."""
+    # Probability of needing OON care at all
+    p_oon_event: float = 0.02  # 2% annual chance
     
-    Uses EQUAL WEIGHTING by default (Spitznagel approach).
-    Probability is for reference/documentation only.
-    """
-    name: str
-    probability: float  # Reference only
-    medical_oop: float  # Out-of-pocket medical costs
-    extra_oon: float = 0.0  # Additional OON costs (post-stabilization)
-
-# Default scenarios (equally weighted for geometric mean)
-DEFAULT_SCENARIOS = [
-    Scenario("no_use", 0.70, 0.0),
-    Scenario("minor_use", 0.25, None),  # Filled from plan.expected_minor_oop
-    Scenario("cat_in_network", 0.03, None),  # Filled from plan.in_network_oop_max
-    Scenario("cat_oon_emergency", 0.02, None, extra_oon=None),  # OON + post-stabilization
-]
+    # Given OON event, probability of each situation
+    p_emergency_only: float = 0.70  # Just ER, no follow-up
+    p_needs_post_stabilization: float = 0.25  # PT, rehab, etc.
+    p_needs_extended_oon: float = 0.05  # Surgery, long-term
+    
+    # Cost distributions (mean, std for log-normal?)
+    emergency_cost_mean: float = 15_000
+    post_stab_cost_mean: float = 30_000
+    extended_cost_mean: float = 100_000
 ```
 
-#### Design: Geometric Mean Calculation
-
-```python
-# src/insurance/geometric_mean.py
-def compute_expected_log_wealth(
-    annual_income: float,
-    annual_baseline_spend: float,
-    plan: MedicalPlan,
-    scenarios: List[Scenario],
-    dental: Optional[DentalPlan] = None,
-    vision: Optional[VisionPlan] = None,
-) -> float:
-    """Compute expected log-wealth (geometric mean objective).
-    
-    The geometric mean is dominated by the MINIMUM outcome.
-    Spitznagel's key insight: tail protection matters more than expected value.
-    
-    Args:
-        annual_income: Gross annual income
-        annual_baseline_spend: Fixed non-health spending (rent, food, etc.)
-        plan: Medical plan to evaluate
-        scenarios: List of possible outcomes
-        dental: Optional dental add-on
-        vision: Optional vision add-on
-        
-    Returns:
-        Expected log of relative wealth: E[log(W/W₀)]
-        where W₀ = income - baseline_spend (disposable income)
-    """
-```
+**Research questions for ChatGPT 5.2**:
+1. What's the actual probability of OON emergency for SF residents?
+2. What does "post-stabilization" mean exactly?
+3. What's typical cost for OON follow-up care?
 
 ---
 
 ## 📁 Module Map
 
-| Module | Purpose |
-|--------|---------|
-| `src/insurance/plans.py` | Plan data models |
-| `src/insurance/scenarios.py` | Scenario definitions |
-| `src/insurance/geometric_mean.py` | GM calculation (Spitznagel) |
-| `src/insurance/compare.py` | Plan comparison utilities |
-| `tests/insurance/` | TDD tests |
+| Module | Purpose | Uncle Bob Status |
+|--------|---------|------------------|
+| `src/insurance/plans.py` | Plan data models | ✅ Good |
+| `src/insurance/scenarios.py` | Scenario definitions | ⚠️ Needs network type |
+| `src/insurance/geometric_mean.py` | GM calculation | ⚠️ Too many args |
+| `src/insurance/compare.py` | Plan comparison | ⚠️ Too many args |
+| `src/insurance/config.py` | **NEW** Config objects | 📋 P2a |
 
 ---
 
-## 🔑 Key Insight: Why Geometric Mean?
+## 🔬 Research Tasks (for ChatGPT 5.2)
 
-From Spitznagel's "The Tao of Capital":
+Use ChatGPT 5.2 for current/factual questions. Bring findings back here.
 
-> "The arithmetic mean can mislead. A strategy with high average returns but occasional catastrophic losses will underperform a more modest but consistent strategy over time."
+### R1: OON Coverage Rules by Plan Type
 
-**For health insurance**:
-- Arithmetic mean favors Gold (lower premiums, same "average" outcome)
-- Geometric mean may favor Platinum (lower catastrophic loss ceiling)
+**Prompt template**:
+```
+I'm analyzing Covered California 2026 plans for SF.
+For each plan type (HMO, PPO, EPO), what are the actual
+out-of-network coverage rules?
 
-The geometric mean naturally penalizes strategies with high variance in the downside.
+Specifically:
+1. Emergency care - is it always covered at in-network rates?
+2. Post-stabilization care - when does emergency coverage end?
+3. What does "balance billing protection" actually cover?
+4. Are there any OON benefits on exchange PPO plans?
+```
+
+### R2: Kaiser Network Outside California
+
+**Prompt template**:
+```
+If I have Kaiser Permanente Gold HMO from Covered California
+and I'm injured while skiing in Colorado:
+
+1. Does Kaiser have any coverage outside California?
+2. What happens after ER stabilization?
+3. Can I get follow-up care at Kaiser facilities in Colorado?
+4. What's my realistic OON exposure?
+```
+
+### R3: Post-Stabilization Definition
+
+**Prompt template**:
+```
+Under the No Surprises Act:
+1. What exactly is "post-stabilization" care?
+2. When does emergency coverage end?
+3. Who decides when a patient is "stabilized"?
+4. What's the typical timeline for stabilization?
+```
+
+### R4: Typical OON Costs
+
+**Prompt template**:
+```
+For someone injured out-of-network who needs:
+- Physical therapy (12 sessions)
+- Follow-up orthopedic surgery
+- 2 weeks inpatient rehab
+
+What's the realistic cost range if insurance doesn't cover it?
+```
 
 ---
 
 ## 📐 Mathematical Framework
 
-### Log-Wealth Objective
+### Wealth Ratio (Spitznagel)
 
 ```
-E[log(W)] = (1/n) × Σᵢ log(Wᵢ)
+ratio = (disposable - premium - oop) / disposable
+
+Where:
+  disposable = after_tax_income - baseline_spend
+  premium = medical + dental + vision
+  oop = scenario-specific out-of-pocket
 ```
 
-where:
-- `Wᵢ = Income - Baseline - Premium - OOPᵢ`
-- `n` = number of scenarios (EQUAL weighting)
+### Geometric Mean
 
-### Why Equal Weighting?
+```
+GM = (r₁ × r₂ × ... × rₙ)^(1/n)
 
-Probability estimates are uncertain. Equal weighting:
-1. Avoids false precision in probability estimates
-2. Ensures all scenarios matter (no scenario is "negligible")
-3. Makes the analysis robust to probability errors
+Key property: ANY rᵢ → 0 makes GM → 0
+This is why tail risk dominates.
+```
+
+### OON Scenario (to be refined)
+
+```
+Current (simplistic):
+  oon_oop = in_network_oop_max + post_stabilization_exposure
+
+Better (after P2b/P2c):
+  oon_oop = emergency_oop × (1 - emergency_cost_share)
+          + post_stab_cost × (1 - post_stab_cost_share)
+          
+  Where cost_share depends on NetworkType
+```
 
 ---
 
@@ -171,20 +284,21 @@ Probability estimates are uncertain. Equal weighting:
 Before implementing any feature:
 
 1. [ ] Write failing test first (TDD)
-2. [ ] Keep functions <50 lines
-3. [ ] Use dataclasses for structured data
-4. [ ] Docstrings with Args/Returns
-5. [ ] Run `pytest -v` after each change
+2. [ ] Keep functions ≤3 arguments (use config objects)
+3. [ ] Keep functions <50 lines
+4. [ ] Use dataclasses for structured data
+5. [ ] Docstrings with Args/Returns
+6. [ ] Run `pytest -v` after each change
 
 ---
 
-## 🚀 Next Steps
+## 🚀 Priority Order
 
-After P1 is complete:
-
-| Task | Description | Entropy | Ease | ROI |
-|------|-------------|---------|------|-----|
-| P2 | Load real Covered California 2026 plan data | 6 | 5 | 30 |
-| P3 | Sensitivity analysis (vary probabilities) | 4 | 7 | 28 |
-| P4 | Visualization (scenario waterfall chart) | 3 | 8 | 24 |
-| P5 | CLI for plan comparison | 3 | 6 | 18 |
+| Priority | Task | Blocker? |
+|----------|------|----------|
+| 1 | **P2a**: Config refactor | No |
+| 2 | **R1-R4**: Research tasks | No (parallel) |
+| 3 | **P2b**: Network type modeling | Needs R1 |
+| 4 | **P2c**: OON probability model | Needs R3, R4 |
+| 5 | **P3**: Real plan data | Needs P2a |
+| 6 | **P4**: Visualization | Needs P3 |
