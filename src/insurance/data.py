@@ -11,21 +11,23 @@ from src.insurance.plans import MedicalPlan, DentalPlan, VisionPlan, NetworkType
 
 
 # =============================================================================
-# FINANCIAL DEFAULTS (SF couple, $240k gross)
+# FINANCIAL DEFAULTS (SF couple, $275k gross)
 # 
-# NOTE: BLS says SF average household spends ~$110-130k/year.
-# BUT at $130k baseline + $55k max health cost = RUIN at $240k income!
-# Using $80k baseline to allow meaningful analysis.
-# User should customize to their actual spending.
+# Real situation:
+# - Wife salary: $130k
+# - Your salary: $110k  
+# - Family office: $35k
+# - Dad helps with rent and some food (Instacart/UberEats)
+# - Child support: $24k/year
 # =============================================================================
 
-DEFAULT_GROSS_INCOME = 240_000
-DEFAULT_TAX_RATE = 0.30  # Fed + CA state for $240k couple (conservative)
-DEFAULT_BASELINE_SPEND = 80_000  # Allows survival in catastrophe
+DEFAULT_GROSS_INCOME = 275_000
+DEFAULT_TAX_RATE = 0.326  # Fed + CA state + FICA for $275k couple
+DEFAULT_BASELINE_SPEND = 68_000  # Child support + food + transport + utilities + misc (no rent!)
 
 # Calculated
-DEFAULT_AFTER_TAX = DEFAULT_GROSS_INCOME * (1 - DEFAULT_TAX_RATE)  # $168,000
-DEFAULT_DISPOSABLE = DEFAULT_AFTER_TAX - DEFAULT_BASELINE_SPEND  # $88,000
+DEFAULT_AFTER_TAX = DEFAULT_GROSS_INCOME * (1 - DEFAULT_TAX_RATE)  # $185,350
+DEFAULT_DISPOSABLE = DEFAULT_AFTER_TAX - DEFAULT_BASELINE_SPEND  # $117,350
 
 
 # =============================================================================
