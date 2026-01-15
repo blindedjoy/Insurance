@@ -4,7 +4,7 @@ These fixtures provide reusable test data following DRY principles.
 """
 
 import pytest
-from src.insurance.plans import MedicalPlan, DentalPlan, VisionPlan
+from src.insurance.plans import MedicalPlan, DentalPlan, VisionPlan, NetworkType
 from src.insurance.scenarios import Scenario
 
 
@@ -19,11 +19,17 @@ def gold_ppo_plan() -> MedicalPlan:
         name="Blue Shield Gold 80 PPO",
         annual_premium=24_000.0,  # $2000/month for couple
         in_network_oop_max=17_400.0,  # Couple OOP max
+        network_type=NetworkType.PPO,
         deductible=0.0,  # Gold plans often $0 deductible
         expected_minor_oop=400.0,
         oon_emergency_treated_as_in_network=True,
         post_stabilization_oon_covered=False,
         post_stabilization_exposure=30_000.0,
+        # PPO OON fields (from research)
+        oon_deductible=5_500.0,
+        oon_oop_max=25_000.0,
+        oon_coinsurance=0.50,
+        ground_ambulance_exposure=1_500.0,
     )
 
 
@@ -34,11 +40,17 @@ def platinum_ppo_plan() -> MedicalPlan:
         name="Blue Shield Platinum 90 PPO",
         annual_premium=30_000.0,  # Higher premium than Gold
         in_network_oop_max=8_700.0,  # Lower OOP max (key benefit)
+        network_type=NetworkType.PPO,
         deductible=0.0,
         expected_minor_oop=300.0,  # Lower copays
         oon_emergency_treated_as_in_network=True,
         post_stabilization_oon_covered=False,
         post_stabilization_exposure=30_000.0,
+        # PPO OON fields
+        oon_deductible=5_500.0,
+        oon_oop_max=25_000.0,
+        oon_coinsurance=0.50,
+        ground_ambulance_exposure=1_500.0,
     )
 
 
@@ -49,11 +61,38 @@ def kaiser_gold_hmo() -> MedicalPlan:
         name="Kaiser Gold HMO",
         annual_premium=18_000.0,  # Lower premium
         in_network_oop_max=8_700.0,  # Couple OOP max
+        network_type=NetworkType.HMO,
         deductible=0.0,
         expected_minor_oop=350.0,
         oon_emergency_treated_as_in_network=True,
         post_stabilization_oon_covered=False,
         post_stabilization_exposure=30_000.0,
+        # HMO doesn't have meaningful OON coverage
+        oon_deductible=0.0,
+        oon_oop_max=0.0,  # No OON cap for HMO
+        oon_coinsurance=1.0,  # You pay 100%
+        ground_ambulance_exposure=1_500.0,
+    )
+
+
+@pytest.fixture
+def anthem_gold_epo() -> MedicalPlan:
+    """Anthem Blue Cross Gold EPO - broad network, no OON coverage."""
+    return MedicalPlan(
+        name="Anthem Blue Cross Gold EPO",
+        annual_premium=22_000.0,
+        in_network_oop_max=8_700.0,
+        network_type=NetworkType.EPO,
+        deductible=0.0,
+        expected_minor_oop=400.0,
+        oon_emergency_treated_as_in_network=True,
+        post_stabilization_oon_covered=False,
+        post_stabilization_exposure=30_000.0,
+        # EPO: no OON coverage (like HMO)
+        oon_deductible=0.0,
+        oon_oop_max=0.0,
+        oon_coinsurance=1.0,
+        ground_ambulance_exposure=1_500.0,
     )
 
 

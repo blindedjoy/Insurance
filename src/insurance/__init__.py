@@ -5,7 +5,7 @@ health insurance plans. The key insight: geometric mean is dominated by
 the minimum outcome, so tail risk protection matters more than expected value.
 """
 
-from src.insurance.plans import MedicalPlan, DentalPlan, VisionPlan
+from src.insurance.plans import MedicalPlan, DentalPlan, VisionPlan, NetworkType
 from src.insurance.scenarios import Scenario, build_scenarios_for_plan
 from src.insurance.geometric_mean import (
     compute_expected_log_wealth,
@@ -30,6 +30,7 @@ __all__ = [
     "MedicalPlan",
     "DentalPlan", 
     "VisionPlan",
+    "NetworkType",
     # Scenarios
     "Scenario",
     "build_scenarios_for_plan",

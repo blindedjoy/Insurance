@@ -148,3 +148,80 @@ class TestPlanTotalCost:
         total = total_annual_premium(gold_ppo_plan, None, None)
         
         assert total == gold_ppo_plan.annual_premium
+
+
+class TestNetworkType:
+    """Test NetworkType enum (from research findings)."""
+
+    def test_network_type_enum_exists(self):
+        """NetworkType enum should exist."""
+        from src.insurance.plans import NetworkType
+        assert NetworkType is not None
+
+    def test_network_type_has_hmo(self):
+        """NetworkType should have HMO option."""
+        from src.insurance.plans import NetworkType
+        assert hasattr(NetworkType, "HMO")
+        assert NetworkType.HMO.value == "hmo"
+
+    def test_network_type_has_ppo(self):
+        """NetworkType should have PPO option."""
+        from src.insurance.plans import NetworkType
+        assert hasattr(NetworkType, "PPO")
+        assert NetworkType.PPO.value == "ppo"
+
+    def test_network_type_has_epo(self):
+        """NetworkType should have EPO option."""
+        from src.insurance.plans import NetworkType
+        assert hasattr(NetworkType, "EPO")
+        assert NetworkType.EPO.value == "epo"
+
+
+class TestMedicalPlanNetworkType:
+    """Test MedicalPlan with network type field."""
+
+    def test_medical_plan_has_network_type(self, kaiser_gold_hmo):
+        """MedicalPlan should have network_type field."""
+        assert hasattr(kaiser_gold_hmo, "network_type")
+
+    def test_kaiser_is_hmo(self, kaiser_gold_hmo):
+        """Kaiser plan should have HMO network type."""
+        from src.insurance.plans import NetworkType
+        assert kaiser_gold_hmo.network_type == NetworkType.HMO
+
+    def test_ppo_plan_is_ppo(self, gold_ppo_plan):
+        """PPO plan should have PPO network type."""
+        from src.insurance.plans import NetworkType
+        assert gold_ppo_plan.network_type == NetworkType.PPO
+
+
+class TestPPOOONFields:
+    """Test PPO-specific out-of-network fields (from research)."""
+
+    def test_ppo_has_oon_deductible(self, gold_ppo_plan):
+        """PPO plan should have OON deductible (~$5,500)."""
+        assert hasattr(gold_ppo_plan, "oon_deductible")
+        # Research found $5,500 for Blue Shield PPO
+        assert gold_ppo_plan.oon_deductible > 0
+
+    def test_ppo_has_oon_oop_max(self, gold_ppo_plan):
+        """PPO plan should have OON OOP max (~$25,000)."""
+        assert hasattr(gold_ppo_plan, "oon_oop_max")
+        # Research found $25,000 individual for Blue Shield PPO
+        assert gold_ppo_plan.oon_oop_max > gold_ppo_plan.in_network_oop_max
+
+    def test_ppo_has_oon_coinsurance(self, gold_ppo_plan):
+        """PPO plan should have OON coinsurance (50%)."""
+        assert hasattr(gold_ppo_plan, "oon_coinsurance")
+        # Research found 50% coinsurance after deductible
+        assert 0 < gold_ppo_plan.oon_coinsurance <= 1.0
+
+
+class TestGroundAmbulanceExposure:
+    """Test ground ambulance exposure field (research: NOT protected by federal law)."""
+
+    def test_plan_has_ground_ambulance_exposure(self, gold_ppo_plan):
+        """MedicalPlan should have ground ambulance exposure field."""
+        assert hasattr(gold_ppo_plan, "ground_ambulance_exposure")
+        # Research: $500-$2,000 exposure
+        assert 500 <= gold_ppo_plan.ground_ambulance_exposure <= 2500
