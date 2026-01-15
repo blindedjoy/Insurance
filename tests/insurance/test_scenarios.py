@@ -98,16 +98,20 @@ class TestBuildScenariosForPlan:
             assert oon.medical_oop == gold_ppo_plan.in_network_oop_max
 
     def test_build_scenarios_adds_post_stabilization(self, gold_ppo_plan):
-        """Builder should add post-stabilization exposure if not covered."""
+        """Builder should add post-stabilization + ground ambulance exposure."""
         from src.insurance.scenarios import build_scenarios_for_plan
         
         scenarios = build_scenarios_for_plan(gold_ppo_plan)
         oon = next(s for s in scenarios if s.name == "cat_oon_emergency")
         
+        # Ground ambulance is ALWAYS added (not protected by No Surprises Act)
+        expected_extra = gold_ppo_plan.ground_ambulance_exposure
+        
         if not gold_ppo_plan.post_stabilization_oon_covered:
-            assert oon.extra_oon == gold_ppo_plan.post_stabilization_exposure
-        else:
-            assert oon.extra_oon == 0.0
+            # Add post-stabilization if not covered
+            expected_extra += gold_ppo_plan.post_stabilization_exposure
+        
+        assert oon.extra_oon == expected_extra
 
     def test_build_scenarios_returns_four_scenarios(self, gold_ppo_plan):
         """Builder should return the four standard scenarios."""

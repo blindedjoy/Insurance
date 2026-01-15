@@ -1,163 +1,71 @@
 """Shared fixtures for insurance tests.
 
-These fixtures provide reusable test data following DRY principles.
+Fixtures use the shared data module (src/insurance/data.py) to avoid DRY violations.
 All values are from Covered California 2026 research (Jan 2026).
 """
 
 import pytest
 from src.insurance.plans import MedicalPlan, DentalPlan, VisionPlan, NetworkType
 from src.insurance.scenarios import Scenario
+from src.insurance.data import (
+    KAISER_GOLD_HMO,
+    KAISER_PLATINUM_HMO,
+    BLUE_SHIELD_TRIO_GOLD_HMO,
+    BLUE_SHIELD_TRIO_PLATINUM_HMO,
+    BLUE_SHIELD_GOLD_PPO,
+    BLUE_SHIELD_PLATINUM_PPO,
+    DELTA_DENTAL,
+    VSP_VISION,
+    DEFAULT_GROSS_INCOME,
+    DEFAULT_TAX_RATE,
+    DEFAULT_BASELINE_SPEND,
+)
 
 
 # =============================================================================
-# Plan Fixtures - Real 2026 Covered California Numbers
-# Source: docs/research/prompt b responses/
-# All premiums for SF couple, age 35, no subsidies
+# Plan Fixtures - Using shared data module (Single Source of Truth)
 # =============================================================================
 
 @pytest.fixture
 def kaiser_gold_hmo() -> MedicalPlan:
-    """Kaiser Permanente Gold HMO - lowest premium, integrated network.
-    
-    2026 Research findings:
-    - Has 1,100+ physicians in Colorado (better travel coverage than expected)
-    - Visiting Member Program for out-of-area care
-    - 24/7 authorization line: 1-800-225-8883
-    """
-    return MedicalPlan(
-        name="Kaiser Gold HMO",
-        annual_premium=18_456.0,  # $1,538/month × 2
-        in_network_oop_max=18_400.0,  # $9,200 × 2 (couple)
-        network_type=NetworkType.HMO,
-        deductible=0.0,
-        expected_minor_oop=400.0,  # $40 PCP + some visits
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=False,
-        post_stabilization_exposure=15_000.0,  # Expected case from research
-        # HMO: no meaningful OON coverage
-        oon_deductible=0.0,
-        oon_oop_max=0.0,
-        oon_coinsurance=1.0,
-        ground_ambulance_exposure=1_500.0,
-    )
+    """Kaiser Permanente Gold HMO - lowest premium, integrated network."""
+    return KAISER_GOLD_HMO
 
 
 @pytest.fixture
 def kaiser_platinum_hmo() -> MedicalPlan:
     """Kaiser Permanente Platinum HMO - lower OOP max, higher premium."""
-    return MedicalPlan(
-        name="Kaiser Platinum HMO",
-        annual_premium=19_824.0,  # $1,652/month × 2
-        in_network_oop_max=10_000.0,  # $5,000 × 2 (couple)
-        network_type=NetworkType.HMO,
-        deductible=0.0,
-        expected_minor_oop=200.0,  # $15 PCP copay (lower)
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=False,
-        post_stabilization_exposure=15_000.0,
-        oon_deductible=0.0,
-        oon_oop_max=0.0,
-        oon_coinsurance=1.0,
-        ground_ambulance_exposure=1_500.0,
-    )
+    return KAISER_PLATINUM_HMO
 
 
 @pytest.fixture
 def blue_shield_trio_gold_hmo() -> MedicalPlan:
-    """Blue Shield Trio Gold HMO - narrow network (UCSF, Dignity).
-    
-    2026 Research findings:
-    - Has BlueCard national network for emergencies
-    - Away From Home Care program
-    - Slightly better OON flexibility than Kaiser
-    """
-    return MedicalPlan(
-        name="Blue Shield Trio Gold HMO",
-        annual_premium=18_600.0,  # $1,550/month × 2
-        in_network_oop_max=18_400.0,  # $9,200 × 2
-        network_type=NetworkType.HMO,
-        deductible=0.0,
-        expected_minor_oop=400.0,
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=False,  # Still HMO rules
-        post_stabilization_exposure=15_000.0,
-        oon_deductible=0.0,
-        oon_oop_max=0.0,
-        oon_coinsurance=1.0,
-        ground_ambulance_exposure=1_500.0,
-    )
+    """Blue Shield Trio Gold HMO - narrow network (UCSF, Dignity)."""
+    return BLUE_SHIELD_TRIO_GOLD_HMO
 
 
 @pytest.fixture
 def blue_shield_trio_platinum_hmo() -> MedicalPlan:
     """Blue Shield Trio Platinum HMO - ChatGPT's recommended plan."""
-    return MedicalPlan(
-        name="Blue Shield Trio Platinum HMO",
-        annual_premium=21_672.0,  # $1,806/month × 2
-        in_network_oop_max=10_000.0,  # $5,000 × 2
-        network_type=NetworkType.HMO,
-        deductible=0.0,
-        expected_minor_oop=200.0,
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=False,
-        post_stabilization_exposure=15_000.0,
-        oon_deductible=0.0,
-        oon_oop_max=0.0,
-        oon_coinsurance=1.0,
-        ground_ambulance_exposure=1_500.0,
-    )
+    return BLUE_SHIELD_TRIO_PLATINUM_HMO
 
 
 @pytest.fixture
 def gold_ppo_plan() -> MedicalPlan:
-    """Blue Shield Gold 80 PPO - broad network, OON coverage exists.
-    
-    2026 Research findings:
-    - $8,712/year premium penalty vs Kaiser Gold
-    - OON coverage has gaps (50% coinsurance, $5.5k deductible)
-    - Both sources say hard to justify premium
-    """
-    return MedicalPlan(
-        name="Blue Shield Gold 80 PPO",
-        annual_premium=27_168.0,  # $2,264/month × 2
-        in_network_oop_max=18_400.0,  # $9,200 × 2
-        network_type=NetworkType.PPO,
-        deductible=0.0,
-        expected_minor_oop=400.0,  # $40 PCP copay
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=True,  # PPO has some OON coverage
-        post_stabilization_exposure=15_000.0,  # Still exposed after OON deductible
-        # PPO OON fields (from research)
-        oon_deductible=5_500.0,
-        oon_oop_max=50_000.0,  # $25,000 × 2 couple
-        oon_coinsurance=0.50,  # You pay 50%
-        ground_ambulance_exposure=1_500.0,
-    )
+    """Blue Shield Gold 80 PPO - broad network, OON coverage exists."""
+    return BLUE_SHIELD_GOLD_PPO
 
 
 @pytest.fixture
 def platinum_ppo_plan() -> MedicalPlan:
     """Blue Shield Platinum 90 PPO - richest benefits, highest premium."""
-    return MedicalPlan(
-        name="Blue Shield Platinum 90 PPO",
-        annual_premium=36_936.0,  # $3,078/month × 2
-        in_network_oop_max=10_000.0,  # $5,000 × 2
-        network_type=NetworkType.PPO,
-        deductible=0.0,
-        expected_minor_oop=200.0,  # $15 PCP copay
-        oon_emergency_treated_as_in_network=True,
-        post_stabilization_oon_covered=True,
-        post_stabilization_exposure=10_000.0,  # Lower due to OON coverage
-        oon_deductible=5_500.0,
-        oon_oop_max=50_000.0,
-        oon_coinsurance=0.50,
-        ground_ambulance_exposure=1_500.0,
-    )
+    return BLUE_SHIELD_PLATINUM_PPO
 
 
 @pytest.fixture
 def anthem_gold_epo() -> MedicalPlan:
     """Anthem Blue Cross Gold EPO - broad network, no OON coverage."""
+    # EPO not in shared data yet - keep inline for now
     return MedicalPlan(
         name="Anthem Blue Cross Gold EPO",
         annual_premium=22_000.0,  # Estimated
@@ -178,21 +86,13 @@ def anthem_gold_epo() -> MedicalPlan:
 @pytest.fixture
 def basic_dental() -> DentalPlan:
     """Delta Dental PPO from Covered California."""
-    return DentalPlan(
-        name="Delta Dental PPO",
-        annual_premium=800.0,
-        expected_oop=200.0,
-    )
+    return DELTA_DENTAL
 
 
 @pytest.fixture
 def basic_vision() -> VisionPlan:
     """VSP Vision from Covered California."""
-    return VisionPlan(
-        name="VSP Vision",
-        annual_premium=300.0,
-        expected_oop=50.0,
-    )
+    return VSP_VISION
 
 
 # =============================================================================
