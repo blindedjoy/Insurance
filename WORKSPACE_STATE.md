@@ -1,8 +1,8 @@
 # 🏥 Insurance Analysis Workspace State
 
 > **Last Updated**: 2026-01-15
-> **Current Branch**: `planning`
-> **Next Task**: P2 — Config refactor + Network type modeling
+> **Current Branch**: `research-prompts`
+> **Next Task**: P2b — Network type modeling (research complete!)
 
 ---
 
@@ -17,41 +17,51 @@ Analyze Covered California Gold vs Platinum plans using Spitznagel's geometric m
 | Scenario engine | ✅ Complete | `src/insurance/scenarios.py` |
 | Gold vs Platinum comparison | ✅ Complete | `src/insurance/compare.py` |
 | Dental/Vision add-ons | ✅ Included | `src/insurance/plans.py` |
-| **Config refactor (Uncle Bob)** | ⏳ P2a | — |
-| **Network type modeling (HMO/PPO/EPO)** | ⏳ P2b | — |
+| **Research: OON rules + costs** | ✅ **COMPLETE** | `docs/research/prompt a responses/` |
+| **Network type modeling** | ⏳ P2b | — |
 | **Tests** | ✅ **82 passing** | `tests/` |
 
 ---
 
-## 🔴 Open Questions (Need Research)
+## ✅ Research Findings (Prompt A Complete)
 
-### Q1: How to model OON risk by network type?
+### Q1: OON Coverage Rules by Plan Type — ANSWERED
 
-| Plan Type | Emergency OON | Post-Stabilization | Non-Emergency OON |
-|-----------|---------------|-------------------|-------------------|
-| **HMO** | ✅ Covered (No Surprises Act) | ❌ Rarely covered | ❌ Never covered |
-| **PPO** | ✅ Covered | ⚠️ Partial/varies | ⚠️ Limited on exchange |
-| **EPO** | ✅ Covered | ❌ Not covered | ❌ Never covered |
+| Situation | HMO | PPO | EPO | Source |
+|-----------|-----|-----|-----|--------|
+| **Emergency OON** | ✅ In-network rates | ✅ In-network rates | ✅ In-network rates | No Surprises Act |
+| **Air ambulance** | ✅ Protected ($250 copay) | ✅ Protected | ✅ Protected | No Surprises Act |
+| **Ground ambulance** | ⚠️ **NOT protected** | ⚠️ **NOT protected** | ⚠️ **NOT protected** | Federal gap |
+| **Post-stabilization (no waiver)** | ✅ Covered | ✅ Covered | ✅ Covered | Until safe to transfer |
+| **Post-stabilization (waiver signed)** | ❌ $0 coverage | ⚠️ 50% after $5.5k ded | ❌ $0 coverage | Patient choice |
+| **Elective OON** | ❌ Never | ⚠️ Limited | ❌ Never | Plan rules |
+| **OON OOP max** | N/A | **$25k ind / $50k couple** | N/A | PPO only |
 
-**Research needed**: What's the actual probability of needing OON care, and what's the expected cost exposure for each plan type?
+**Key insight**: The **consent waiver** is the critical decision point. CMS estimates **50% of patients sign waivers**, exposing themselves to full OON charges.
 
-### Q2: Network adequacy for SF plans
+### Q2: Network Adequacy — PARTIALLY ANSWERED
 
-| Plan | Network | Key Hospitals | Risk if traveling? |
-|------|---------|---------------|-------------------|
-| Kaiser Gold HMO | Kaiser only | Kaiser SF | High (Kaiser only nationwide) |
+| Plan | Network | Key Hospitals | Travel Risk |
+|------|---------|---------------|-------------|
+| Kaiser Gold HMO | Kaiser only | Kaiser SF | **High** (Kaiser-only nationwide) |
 | Blue Shield Trio HMO | UCSF + Dignity | UCSF, St. Mary's | Medium |
-| Blue Shield PPO | Broad | Most SF hospitals | Lower |
-| Anthem EPO | Broad (no UCSF?) | ? | Medium |
+| Blue Shield PPO | Broad | Most SF hospitals | Lower (OON coverage exists) |
+| Anthem EPO | Broad | TBD | Medium |
 
-**Research needed**: Which hospitals/providers are in each network? What happens with Kaiser if injured in Colorado?
+**Prompt B** will provide more detail on Kaiser travel risk.
 
-### Q3: Post-stabilization exposure
+### Q3: Post-Stabilization Exposure — ANSWERED
 
-Current model assumes $30k exposure. Is this realistic?
-- What does "post-stabilization" actually mean legally?
-- When does emergency coverage end?
-- What's typical for extended OON care (rehab, follow-up surgery)?
+**$30k assumption is reasonable but should be tiered for geometric mean analysis.**
+
+| Scenario | Probability | Exposure | Model Parameter |
+|----------|-------------|----------|-----------------|
+| Best case (simple fracture, quick discharge) | 30% | $1k-$5k | **$3,000** |
+| Expected case (surgery, transfer arranged) | 50% | $8k-$20k | **$15,000** |
+| Moderate worst (surgery, stays at OON hospital) | 18% | $25k-$50k | **$35,000** |
+| Catastrophic (complications, extended stay) | 2% | $50k-$150k | **$75,000** |
+
+**Additional exposure**: Ground ambulance ($500-$2,000) — not protected by federal law.
 
 ---
 
@@ -79,6 +89,7 @@ This is why **tail risk protection** matters more than premium optimization.
 The OOP maximum acts like a put option strike price:
 - **Lower OOP max** = better downside protection = higher "put value"
 - **Network type** affects the "conditions" under which the put pays off
+- **PPO OON OOP max ($25k)** = partial protection for waiver-signers
 
 ---
 
@@ -93,25 +104,17 @@ The OOP maximum acts like a put option strike price:
 | P1c | Geometric mean calculation |
 | P1d | Plan comparison function |
 | P1.1 | Wealth ratio refactor (Spitznagel 0-1 scale) |
+| **R1-R4** | **Research complete** (Prompt A via ChatGPT + Opus) |
 
 ### 🔄 In Progress / Next
 
 | Task | Description | Depends On |
 |------|-------------|------------|
-| **P2a** | Config refactor (Uncle Bob ≤3 args) | — |
-| **P2b** | Network type modeling (HMO/PPO/EPO) | Research |
-| **P2c** | OON probability model | Research |
-| **P3** | Load real Covered California plan data | P2a |
+| **P2b** | Network type modeling (HMO/PPO/EPO) | ✅ Research done |
+| **P2c** | Tiered OON scenario model | ✅ Research done |
+| **Prompt B** | Kaiser travel + Gold vs Platinum research | In progress |
+| **P3** | Load real Covered California plan data | P2b |
 | **P4** | Visualization (scenario waterfall) | P3 |
-
-### 📚 Research Tasks (for ChatGPT 5.2)
-
-| Task | Question |
-|------|----------|
-| R1 | What are the actual OON coverage rules for each Covered California plan type (HMO/PPO/EPO)? |
-| R2 | What's the network for Kaiser Gold HMO outside California? |
-| R3 | What does "post-stabilization" mean under the No Surprises Act? |
-| R4 | What's typical cost for extended OON care (PT, rehab, follow-up surgery)? |
 
 ---
 
@@ -121,15 +124,17 @@ The OOP maximum acts like a put option strike price:
 |----------|------|
 | **This file** | `WORKSPACE_STATE.md` |
 | Autopilot | `docs/AI_AUTOPILOT.md` |
-| ChatGPT research | `docs/research/chatgpt_ca_2026_research.md` |
+| Research prompts | `docs/research/prompts/` |
+| **Research findings** | `docs/research/prompt a responses/` |
 
 ---
 
 ## ⚠️ Technical Debt
 
-| Issue | Location | Priority |
-|-------|----------|----------|
-| Functions with >3 args | `geometric_mean.py`, `compare.py` | **High** (P2a) |
-| Binary OON model (too simplistic) | `plans.py`, `scenarios.py` | **High** (P2b) |
-| Hardcoded $30k post-stabilization | `plans.py` | Medium |
-| No network type field | `MedicalPlan` | **High** (P2b) |
+| Issue | Location | Priority | Status |
+|-------|----------|----------|--------|
+| Binary OON model (too simplistic) | `scenarios.py` | **High** | 🔄 Fixing now |
+| Hardcoded $30k post-stabilization | `plans.py` | **High** | 🔄 Fixing now |
+| No network type field | `MedicalPlan` | **High** | 🔄 Fixing now |
+| No ground ambulance exposure | `plans.py` | Medium | 🔄 Adding |
+| Functions with >3 args | `geometric_mean.py` | Medium | Later |

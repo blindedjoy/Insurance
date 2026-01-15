@@ -23,191 +23,163 @@ ROI = Entropy × Ease. Higher ROI = do first.
 
 ---
 
-### 🔄 P2: Config Refactor + Network Modeling — IN PROGRESS
+### ✅ Research Phase — PROMPT A COMPLETE
 
-#### P2a: Config Objects (Uncle Bob)
+| Task | Topic | Status | Findings |
+|------|-------|--------|----------|
+| **R1** | Network type coverage rules | ✅ | All plans equal for emergency |
+| **R2** | Kaiser travel risk | ⏳ Prompt B | — |
+| **R3** | Gold vs Platinum comparison | ⏳ Prompt B | — |
+| **R4** | Post-stabilization costs | ✅ | Tiered model validated |
 
-**Problem**: Functions have too many arguments (>3).
+**Key Research Findings** (from ChatGPT 5.2 + Opus):
 
-**Solution**: Create config dataclasses.
-
-```python
-# src/insurance/config.py
-@dataclass
-class FinancialConfig:
-    """Household financial parameters."""
-    gross_income: float
-    tax_rate: float
-    baseline_spend: float
-    
-    @property
-    def after_tax_income(self) -> float:
-        return self.gross_income * (1 - self.tax_rate)
-    
-    @property
-    def disposable_income(self) -> float:
-        return self.after_tax_income - self.baseline_spend
-
-
-@dataclass
-class PlanBundle:
-    """Medical + optional dental/vision."""
-    medical: MedicalPlan
-    dental: Optional[DentalPlan] = None
-    vision: Optional[VisionPlan] = None
-    
-    @property
-    def total_premium(self) -> float:
-        return sum(p.annual_premium for p in [self.medical, self.dental, self.vision] if p)
-
-
-# Refactored function signature:
-def compute_expected_log_wealth(
-    config: FinancialConfig,
-    bundle: PlanBundle,
-    scenarios: List[Scenario],
-) -> float:
-    """Now has only 3 arguments (Uncle Bob approved)."""
-```
-
-| Sub-task | Description | Tests |
-|----------|-------------|-------|
-| P2a.1 | Create `FinancialConfig` | `test_config.py` |
-| P2a.2 | Create `PlanBundle` | `test_config.py` |
-| P2a.3 | Refactor `compute_expected_log_wealth` | Update existing |
-| P2a.4 | Refactor `compare_plans` | Update existing |
+1. **Emergency OON**: Protected equally across all plan types (No Surprises Act)
+2. **Air ambulance**: Protected by federal law
+3. **Ground ambulance**: **NOT protected** — budget $500-$2,000
+4. **Consent waiver**: 50% of patients sign, exposing to full OON charges
+5. **PPO advantage**: $25k OON OOP max caps tail risk for waiver-signers
+6. **$30k assumption**: Reasonable for expected case, but use tiered model
 
 ---
 
-#### P2b: Network Type Modeling
+## 🔬 Validated Model Parameters (from Research)
 
-**Problem**: Current model ignores HMO/PPO/EPO differences.
+### Tiered Post-Stabilization Exposure (Colorado Ski Scenario)
 
-**Solution**: Add network type to `MedicalPlan` with OON coverage rules.
+**Old model**: Fixed $30,000 exposure
+
+**New model** (Opus recommendation):
 
 ```python
-# src/insurance/plans.py
+# Tiered OON exposure for geometric mean analysis
+OON_SCENARIOS = {
+    "best_case": {
+        "exposure": 3_000,      # Simple fracture, quick discharge
+        "probability": 0.30,
+    },
+    "expected_case": {
+        "exposure": 15_000,     # Surgery, transfer arranged
+        "probability": 0.50,
+    },
+    "moderate_worst": {
+        "exposure": 35_000,     # Surgery, stays at OON hospital
+        "probability": 0.18,
+    },
+    "catastrophic": {
+        "exposure": 75_000,     # Complications, extended stay
+        "probability": 0.02,
+    },
+}
+
+# Additional fixed costs
+GROUND_AMBULANCE_EXPOSURE = 1_500  # $500-$2,000 range, use midpoint
+```
+
+### Coverage Rules by Plan Type
+
+```python
 from enum import Enum
 
 class NetworkType(Enum):
-    HMO = "hmo"      # Referrals required, OON emergency only
-    PPO = "ppo"      # No referrals, some OON coverage
-    EPO = "epo"      # No referrals, NO OON coverage (except emergency)
+    HMO = "hmo"
+    PPO = "ppo"
+    EPO = "epo"
+
+# Validated coverage rules (from research)
+COVERAGE_RULES = {
+    NetworkType.HMO: {
+        "emergency_oon": "in_network_rates",      # No Surprises Act
+        "post_stab_no_waiver": "covered",         # Until safe to transfer
+        "post_stab_with_waiver": "not_covered",   # You pay 100%
+        "oon_oop_max": None,                      # No cap
+    },
+    NetworkType.PPO: {
+        "emergency_oon": "in_network_rates",
+        "post_stab_no_waiver": "covered",
+        "post_stab_with_waiver": "50%_after_5.5k_ded",  # Blue Shield PPO
+        "oon_oop_max": 25_000,                    # Individual cap
+    },
+    NetworkType.EPO: {
+        "emergency_oon": "in_network_rates",
+        "post_stab_no_waiver": "covered",
+        "post_stab_with_waiver": "not_covered",
+        "oon_oop_max": None,
+    },
+}
+```
+
+---
+
+### 🔄 P2: Network Modeling — NOW UNBLOCKED
+
+#### P2b: Network Type + Tiered OON Model
+
+**Status**: Research complete, ready to implement!
+
+```python
+# src/insurance/plans.py additions
+
+class NetworkType(Enum):
+    """Health plan network type."""
+    HMO = "hmo"
+    PPO = "ppo"  
+    EPO = "epo"
 
 
 @dataclass
-class OONCoverageRules:
-    """Out-of-network coverage rules by situation."""
-    emergency_covered: bool = True  # Always True per No Surprises Act
-    emergency_cost_share: float = 1.0  # 1.0 = in-network rates, <1.0 = partial
-    post_stabilization_covered: bool = False
-    post_stabilization_cost_share: float = 0.0  # 0.0 = you pay 100%
-    elective_oon_covered: bool = False
+class PostStabilizationConfig:
+    """Tiered post-stabilization exposure (from research)."""
+    # Probability of signing consent waiver (CMS: ~50%)
+    p_waiver_signed: float = 0.50
+    
+    # Tiered exposure if waiver signed (HMO/EPO)
+    best_case: float = 3_000
+    best_case_p: float = 0.30
+    expected_case: float = 15_000
+    expected_case_p: float = 0.50
+    moderate_worst: float = 35_000
+    moderate_worst_p: float = 0.18
+    catastrophic: float = 75_000
+    catastrophic_p: float = 0.02
+    
+    # Ground ambulance (not protected by federal law)
+    ground_ambulance: float = 1_500
 
 
-# Default rules by network type
-DEFAULT_OON_RULES = {
-    NetworkType.HMO: OONCoverageRules(
-        emergency_covered=True,
-        emergency_cost_share=1.0,
-        post_stabilization_covered=False,
-        post_stabilization_cost_share=0.0,
-        elective_oon_covered=False,
-    ),
-    NetworkType.PPO: OONCoverageRules(
-        emergency_covered=True,
-        emergency_cost_share=1.0,
-        post_stabilization_covered=True,  # Usually some coverage
-        post_stabilization_cost_share=0.5,  # 50% covered (estimate)
-        elective_oon_covered=False,  # Not on exchange plans
-    ),
-    NetworkType.EPO: OONCoverageRules(
-        emergency_covered=True,
-        emergency_cost_share=1.0,
-        post_stabilization_covered=False,
-        post_stabilization_cost_share=0.0,
-        elective_oon_covered=False,
-    ),
-}
+@dataclass
+class MedicalPlan:
+    """Updated with network type."""
+    name: str
+    annual_premium: float
+    in_network_oop_max: float
+    network_type: NetworkType  # NEW
+    deductible: float = 0.0
+    expected_minor_oop: float = 400.0
+    
+    # OON fields (PPO only)
+    oon_deductible: float = 5_500  # PPO OON deductible
+    oon_oop_max: float = 25_000    # PPO OON cap
+    oon_coinsurance: float = 0.50  # You pay 50% after deductible
 ```
 
 | Sub-task | Description | Tests |
 |----------|-------------|-------|
 | P2b.1 | Add `NetworkType` enum | `test_plans.py` |
-| P2b.2 | Add `OONCoverageRules` | `test_plans.py` |
+| P2b.2 | Add `PostStabilizationConfig` | `test_plans.py` |
 | P2b.3 | Update `MedicalPlan` with network_type | `test_plans.py` |
-| P2b.4 | Update scenario builder for network rules | `test_scenarios.py` |
-
----
-
-#### P2c: OON Probability Model (Requires Research)
-
-**Problem**: What's the probability of needing OON care?
-
-**Current assumption**: Fixed $30k post-stabilization exposure.
-
-**Better model** (after research):
-
-```python
-@dataclass
-class OONScenarioConfig:
-    """Configuration for out-of-network scenarios."""
-    # Probability of needing OON care at all
-    p_oon_event: float = 0.02  # 2% annual chance
-    
-    # Given OON event, probability of each situation
-    p_emergency_only: float = 0.70  # Just ER, no follow-up
-    p_needs_post_stabilization: float = 0.25  # PT, rehab, etc.
-    p_needs_extended_oon: float = 0.05  # Surgery, long-term
-    
-    # Cost distributions (mean, std for log-normal?)
-    emergency_cost_mean: float = 15_000
-    post_stab_cost_mean: float = 30_000
-    extended_cost_mean: float = 100_000
-```
-
-**Research questions for ChatGPT 5.2**:
-1. What's the actual probability of OON emergency for SF residents?
-2. What does "post-stabilization" mean exactly?
-3. What's typical cost for OON follow-up care?
+| P2b.4 | Update scenario builder for tiered OON | `test_scenarios.py` |
 
 ---
 
 ## 📁 Module Map
 
-| Module | Purpose | Uncle Bob Status |
-|--------|---------|------------------|
-| `src/insurance/plans.py` | Plan data models | ✅ Good |
-| `src/insurance/scenarios.py` | Scenario definitions | ⚠️ Needs network type |
-| `src/insurance/geometric_mean.py` | GM calculation | ⚠️ Too many args |
-| `src/insurance/compare.py` | Plan comparison | ⚠️ Too many args |
-| `src/insurance/config.py` | **NEW** Config objects | 📋 P2a |
-
----
-
-## 🔬 Research Tasks (for ChatGPT 5.2)
-
-Use ChatGPT 5.2 for current/factual questions. Bring findings back here.
-
-**Full prompts**: See `docs/research/RESEARCH_PROMPTS.md`
-
-### Priority Research (Medical Tail Risk)
-
-| Task | Topic | Critical For |
-|------|-------|--------------|
-| **R1** | Network type coverage rules (HMO/PPO/EPO) | P2b |
-| **R2** | Kaiser network + travel risk | Kaiser vs PPO decision |
-| **R3** | Gold vs Platinum comparison | Premium vs OOP trade-off |
-| **R4** | Post-stabilization cost estimates | $30k assumption validation |
-
-### Optional Research (Lower Priority)
-
-| Task | Topic | Why Optional |
-|------|-------|--------------|
-| R5 | Dental plan details | No catastrophic tail risk |
-| R6 | Vision plan details | No catastrophic tail risk |
-
-**Rationale**: Dental/vision have capped annual maximums. No "Colorado catastrophe" equivalent. Can research later if needed for completeness.
+| Module | Purpose | Status |
+|--------|---------|--------|
+| `src/insurance/plans.py` | Plan data models | 🔄 Updating |
+| `src/insurance/scenarios.py` | Scenario definitions | 🔄 Updating |
+| `src/insurance/geometric_mean.py` | GM calculation | ✅ Good |
+| `src/insurance/compare.py` | Plan comparison | ✅ Good |
 
 ---
 
@@ -233,17 +205,34 @@ Key property: ANY rᵢ → 0 makes GM → 0
 This is why tail risk dominates.
 ```
 
-### OON Scenario (to be refined)
+### Tiered OON Model (NEW)
 
+For HMO/EPO (no waiver):
 ```
-Current (simplistic):
-  oon_oop = in_network_oop_max + post_stabilization_exposure
+oon_oop = in_network_oop_max + ground_ambulance
+```
 
-Better (after P2b/P2c):
-  oon_oop = emergency_oop × (1 - emergency_cost_share)
-          + post_stab_cost × (1 - post_stab_cost_share)
-          
-  Where cost_share depends on NetworkType
+For HMO/EPO (waiver signed, weighted by tier probability):
+```
+oon_oop = in_network_oop_max 
+        + ground_ambulance
+        + weighted_post_stab_exposure
+
+weighted_post_stab_exposure = 
+    0.30 × $3,000 
+  + 0.50 × $15,000 
+  + 0.18 × $35,000 
+  + 0.02 × $75,000
+  = $15,600 (expected)
+  
+But for GM analysis, model each tier separately!
+```
+
+For PPO (waiver signed):
+```
+oon_oop = min(oon_oop_max, 
+              oon_deductible + post_stab_cost × oon_coinsurance)
+        + ground_ambulance
 ```
 
 ---
@@ -261,13 +250,12 @@ Before implementing any feature:
 
 ---
 
-## 🚀 Priority Order
+## 🚀 Priority Order (Updated)
 
-| Priority | Task | Blocker? |
-|----------|------|----------|
-| 1 | **P2a**: Config refactor | No |
-| 2 | **R1-R4**: Research tasks | No (parallel) |
-| 3 | **P2b**: Network type modeling | Needs R1 |
-| 4 | **P2c**: OON probability model | Needs R3, R4 |
-| 5 | **P3**: Real plan data | Needs P2a |
-| 6 | **P4**: Visualization | Needs P3 |
+| Priority | Task | Status |
+|----------|------|--------|
+| 1 | ~~Research Prompt A~~ | ✅ Complete |
+| 2 | **P2b**: Network type + tiered OON | 🔄 Ready to implement |
+| 3 | **Prompt B**: Kaiser travel + Gold vs Platinum | ⏳ In progress |
+| 4 | **P3**: Real plan data | After P2b |
+| 5 | **P4**: Visualization | After P3 |
